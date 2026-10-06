@@ -1,0 +1,34 @@
+CONTROLE DE PAGAMENTOS · POLIS — app instalável (R03)
+
+ARQUIVOS DESTA PASTA (todos vão para o GitHub, sem renomear)
+  index.html             o aplicativo
+  manifest.webmanifest   nome, ícone e cores do app instalado
+  sw.js                  permite abrir o app sem internet e avisa quando há versão nova
+  icon-*.png             ícones
+
+Os DADOS não ficam nesta pasta nem no GitHub. Ficam na pasta do seu computador
+escolhida dentro do app (arquivo controle-pagamentos.json + subpasta backups).
+
+PUBLICAR (uma vez só)
+ 1. Crie uma conta em github.com.
+ 2. Clique em "+" > "New repository". Nome: controle-pagamentos. Marque "Public". Create repository.
+ 3. Na página do repositório: "uploading an existing file". Arraste todos os arquivos
+    desta pasta (não a pasta em si). Clique em "Commit changes".
+ 4. Settings > Pages > em "Branch" escolha "main" e "/ (root)" > Save.
+ 5. Espere 1 a 2 minutos. O endereço aparece no topo dessa tela:
+    https://SEU-USUARIO.github.io/controle-pagamentos/
+
+INSTALAR NO COMPUTADOR
+ 6. Abra o endereço no Chrome ou no Edge.
+    Chrome: ícone de instalar na barra de endereço (ou menu ⋮ > Transmitir, salvar e compartilhar > Instalar página como app).
+    Edge: menu … > Aplicativos > Instalar este site como um aplicativo.
+ 7. O app ganha ícone na área de trabalho/menu Iniciar. Fixe na barra de tarefas se quiser.
+
+PRIMEIRO USO
+ 8. Clique em "Escolher pasta de dados" e selecione uma pasta (de preferência no OneDrive/Google Drive).
+ 9. Clique em "Importar" e escolha o arquivo .html que você vinha salvando (ou um backup .json).
+10. Em Contratantes, classifique os contratantes que vieram sem tipo.
+
+ATUALIZAR PARA UMA VERSÃO NOVA
+  No repositório: "Add file" > "Upload files", arraste os arquivos novos (substituem os antigos),
+  "Commit changes". Ao abrir o app, aparece "Nova versão do app disponível · Atualizar agora".

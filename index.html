@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Pagamentos · Polis</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F1D3D">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --ink:#1F1D3D; --ink-2:#2E2B57; --paper:#ECEBF4; --card:#FFFFFF;
+  --line:#D5D2E6; --line-2:#E6E4F1; --water:#5145B8; --water-d:#3D3291;
+  --water-2:#6A5FD6; --water-fill:#BDB6F0; --water-fill-2:#DEDAFA;
+  --amber:#B9791A; --amber-bg:#FBF0DC; --red:#C0392B; --red-bg:#FBE7E4;
+  --ok:#2E7D5B; --ok-bg:#E3F3EB; --calc:#F3F2FA; --muted:#625E80;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:40;background:var(--ink);color:#EEEDF8;display:flex;align-items:center;gap:18px;padding:10px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand .brandlogo{height:24px;width:auto;display:block}
+.brand .brandsep{width:1px;height:20px;background:rgba(255,255,255,.25)}
+.brand .ttl{font-size:14px;font-weight:600;color:#fff;white-space:nowrap}
+.tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tbtn{background:#2F2B5C;border:1px solid #423D78;color:#E2E0F4;font-size:12.5px;padding:6px 12px;border-radius:6px}
+.tbtn:hover{background:#3A3570;border-color:#5A5496}
+.tbtn.primary{background:var(--water);border-color:var(--water-d);color:#fff}
+.tbtn.primary:hover{background:var(--water-2)}
+.saveflag{font-family:inherit;font-size:12px;border:none;border-radius:14px;padding:5px 11px;background:transparent;color:#A7A0D8;cursor:default}
+.saveflag:not(:disabled){cursor:pointer}
+.saveflag.ok::before{content:"✓ ";color:#7FD3A8}
+.saveflag.busy{color:#D8D4F5}
+.saveflag.pending{background:#F2B233;color:#2A1C00;font-weight:700;animation:pulse 2.4s ease-in-out 2}
+.saveflag.pending::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#2A1C00;margin-right:7px;vertical-align:1px}
+.saveflag.err{background:#E0574A;color:#fff;font-weight:700}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(242,178,51,.3)}}
+@media(prefers-reduced-motion:reduce){.saveflag.pending{animation:none}}
+
+/* tabs */
+.tabs{position:sticky;top:49px;z-index:35;background:var(--paper);display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:none;background:transparent;padding:12px 16px 10px;font-size:13.5px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--ink);border-bottom-color:var(--water)}
+.tab .cnt{font-family:var(--mono);font-size:11px;background:var(--line-2);color:var(--muted);border-radius:9px;padding:1px 7px;margin-left:6px}
+.tab.active .cnt{background:var(--water-fill-2);color:var(--water-d)}
+
+.wrap{padding:22px 20px 60px;max-width:1400px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:18px}
+.card>header{padding:12px 16px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(#fff,#FBFBFE);flex-wrap:wrap}
+.card>header h3{font-size:14px}
+.card .body{padding:16px}
+.hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+
+/* summary strip */
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:980px){.strip{grid-template-columns:repeat(2,1fr)}}
+.chip{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:9px;background:#fff;border:1px solid var(--line)}
+.chip .k{font-size:12px;color:var(--muted);font-weight:600}
+.chip .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.chip .u{font-size:11.5px;color:var(--muted)}
+.chip.hl{background:var(--ink);border-color:var(--ink)}
+.chip.hl .k,.chip.hl .u{color:#B3ADE0}
+.chip.hl .v{color:#fff}
+.chip.warn .v{color:var(--amber)}
+.chip.good .v{color:var(--ok)}
+
+/* progress */
+.bar{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;display:flex;min-width:80px}
+.bar i{display:block;height:100%}
+.bar .pg{background:var(--water)}
+.bar .em{background:var(--water-fill)}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+
+/* tables */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+thead th{background:var(--ink);color:#E2E0F4;font-weight:600;padding:8px 10px;text-align:left;white-space:nowrap;font-size:11.5px}
+thead th.r,td.r{text-align:right}
+thead th.c,td.c{text-align:center}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:hover td{background:#F6F5FC}
+tfoot td{padding:9px 10px;font-weight:650;background:var(--calc);border-top:1px solid var(--line)}
+tr.click{cursor:pointer}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:10px}
+
+/* badges */
+.badge{display:inline-block;font-size:11px;font-weight:650;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)}
+.b-warn{background:var(--amber-bg);color:var(--amber)}
+.b-red{background:var(--red-bg);color:var(--red)}
+.b-info{background:var(--water-fill-2);color:var(--water-d)}
+.b-mut{background:var(--line-2);color:var(--muted)}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:600}
+.btn:hover{border-color:var(--water);color:var(--water-d)}
+.btn.primary{background:var(--water);border-color:var(--water-d);color:#fff}
+.btn.primary:hover{background:var(--water-2);color:#fff}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.danger{color:var(--red)}
+.btn.danger:hover{border-color:var(--red);background:var(--red-bg)}
+.btn.link{border:none;background:none;padding:2px 4px;color:var(--water-d)}
+.btn.link:hover{text-decoration:underline}
+.row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
+
+/* fields */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;min-width:0}
+.field label{font-size:12px;font-weight:600;color:var(--ink-2)}
+.field .sub{font-size:11px;color:var(--muted);font-weight:400}
+.field input,.field select,.field textarea,.inp{border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13.5px;background:#fff;color:var(--ink);width:100%}
+.field textarea{resize:vertical;min-height:58px}
+.inp.money,.field input.money{font-family:var(--mono);text-align:right}
+.field input:focus,.field select:focus,.field textarea:focus,.inp:focus{outline:none;border-color:var(--water);box-shadow:0 0 0 3px rgba(81,69,184,.14)}
+.inp:disabled{background:var(--calc);color:#A09CBD}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 12px}
+fieldset{border:1px solid var(--line);border-radius:9px;padding:12px 14px 4px;margin:4px 0 14px}
+legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
+
+/* disciplines picker */
+.disc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px 14px;margin-bottom:8px}
+.disc-row{display:grid;grid-template-columns:auto 1fr 74px 116px;gap:8px;align-items:center;padding:4px 6px;border-radius:7px}
+.disc-row.on{background:var(--calc)}
+.disc-row label{font-size:13px;cursor:pointer}
+.disc-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--water)}
+.disc-row .inp{padding:5px 8px;font-size:12.5px}
+.pctpair{display:grid;grid-template-columns:92px 1fr;gap:6px}
+.pctin{position:relative}
+.pctin input{padding-right:24px!important}
+.pctin span{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12.5px;pointer-events:none}
+.custom-row{display:grid;grid-template-columns:1fr 130px auto;gap:8px;align-items:center;margin-bottom:6px}
+.sumcheck{font-size:12px;padding:7px 10px;border-radius:7px;margin:4px 0 10px}
+
+/* contracts layout */
+.split{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+@media(max-width:980px){.split{grid-template-columns:1fr}}
+.clist{max-height:calc(100vh - 230px);overflow:auto}
+.citem{padding:11px 14px;border-bottom:1px solid var(--line-2);cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.klink{color:inherit;text-decoration:none}.klink:hover{color:var(--water-d);text-decoration:underline}
+.citem:hover{background:#F6F5FC}
+.citem.sel{background:var(--calc);box-shadow:inset 3px 0 0 var(--water)}
+.citem .t{font-weight:650;font-size:13.5px}
+.citem .s{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:4px 8px;flex-wrap:wrap}
+.card>header.clist-head{flex-direction:column;align-items:stretch}
+.clist-head .seg{display:flex}
+.clist-head .seg button{flex:1;white-space:nowrap}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toolbar .inp{width:auto;min-width:160px;padding:6px 9px;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:none;background:#fff;padding:6px 10px;font-size:12px;font-weight:600;color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--ink);color:#fff}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:6px 14px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;white-space:pre-wrap}
+.nextbox{border:1px dashed var(--water);background:#F4F3FC;border-radius:9px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.nextbox.late{border-color:var(--red);background:var(--red-bg)}
+.nextbox.none{border-color:var(--line);background:var(--calc)}
+
+/* agenda */
+.agenda-item{display:grid;grid-template-columns:92px 1fr auto;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line-2)}
+.agenda-item:last-child{border-bottom:none}
+.agenda-item .d{font-family:var(--mono);font-size:12.5px}
+.agenda-item .t{font-weight:600;font-size:13.5px}
+.agenda-item .s{font-size:12px;color:var(--muted)}
+
+/* chart */
+.chart svg{display:block;width:100%;height:auto}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(31,29,61,.45);z-index:80;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:12px;width:min(860px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal>header{padding:14px 18px;border-bottom:1px solid var(--line-2);display:flex;justify-content:space-between;align-items:center}
+.modal>header h3{font-size:16px}
+.modal .body{padding:16px 18px}
+.modal>footer{padding:12px 18px;border-top:1px solid var(--line-2);display:flex;justify-content:flex-end;gap:8px;background:#FBFBFE;border-radius:0 0 12px 12px}
+.xbtn{border:none;background:none;font-size:22px;line-height:1;color:var(--muted)}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:.2s;z-index:99;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.alert{font-size:12.5px;padding:8px 11px;border-radius:7px;margin:0 0 12px}
+.alert.warn{background:var(--amber-bg);color:#7A5210}
+.alert.info{background:var(--calc);color:var(--ink-2)}
+.alert.ok{background:var(--ok-bg);color:var(--ok)}
+
+@media(max-width:700px){.topbar{position:static}.tabs{top:0}.agenda-item{grid-template-columns:1fr}.agenda-item .row-actions{justify-content:flex-start}.kv{grid-template-columns:1fr}}
+.disc-custom{grid-template-columns:1fr 74px 116px auto}
+.disc-row .pctin input,.disc-custom .pctin input{padding:5px 20px 5px 6px;font-size:12.5px}
+.rv-cell .pctpair{grid-template-columns:76px 1fr}
+.novok{background:var(--calc);border-radius:9px;padding:10px 12px 0;margin-bottom:12px}
+.setup{border-color:var(--water);box-shadow:0 0 0 3px rgba(81,69,184,.08)}
+.setup h3{font-size:16px;margin-bottom:6px}
+.setup p{margin:0;max-width:760px}
+.rep-tabs{display:flex;flex-wrap:wrap}
+.rep-tabs button{flex:1;white-space:nowrap;padding:8px 10px;font-size:12.5px}
+.rep .body{padding:22px 24px}
+.rep-head{display:flex;align-items:center;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:16px}
+.rep-head img{height:30px;filter:brightness(0)}
+.rep-head h2{font-size:18px}
+.rep-gen{margin-left:auto;text-align:right}
+.rep h4{font-size:13.5px;margin:20px 0 8px;color:var(--ink-2)}
+.rep-sum{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 8px}
+.rep-sum>div{flex:1;min-width:150px;background:var(--calc);border-radius:8px;padding:9px 12px;display:flex;flex-direction:column}
+.rep-sum span{font-size:11.5px;color:var(--muted);font-weight:600}
+.rep-sum b{font-size:16px}
+.rep-sum small{font-size:12px;color:var(--muted)}
+.rep-kv{margin-bottom:14px}
+.updbar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(calc(100% + 40px));visibility:hidden;background:var(--ink);color:#fff;border-radius:10px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;z-index:90;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.updbar.show{transform:translateX(-50%) translateY(0);visibility:visible}
+@media print{
+  .topbar,.tabs,.btn,.seg,.toolbar .inp,.no-print{display:none!important}
+  body{background:#fff}
+  .card{break-inside:avoid;border-color:#bbb}
+  .clist{max-height:none}
+  .split{grid-template-columns:1fr}
+  .split>.card:first-child{display:none}
+  #banner,.updbar,.toast{display:none!important}
+  body.printing-report .wrap>*:not(#panel-relatorios){display:none!important}
+  body.printing-report #repOut{border:none}
+  body.printing-report .rep .body{padding:0}
+  .rep table{font-size:11px}
+  thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">
+    <img class="brandlogo" src="data:image/png;base64,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" alt="Polis">
+    <span class="brandsep"></span>
+    <span class="ttl">Controle de pagamentos</span>
+  </div>
+  <div class="tools">
+    <button class="saveflag" id="saveflag" disabled></button>
+    <button class="tbtn" id="btnImport">Importar</button>
+    <button class="tbtn" id="btnExport">Exportar backup</button>
+    <button class="tbtn primary" id="btnPrint">Imprimir</button>
+    <input type="file" id="fileInput" accept=".json,.html,.htm,application/json,text/html" hidden>
+  </div>
+</div>
+<nav class="tabs">
+  <button class="tab active" data-tab="painel">Painel</button>
+  <button class="tab" data-tab="contratantes">Contratantes<span class="cnt" id="cntK">0</span></button>
+  <button class="tab" data-tab="contratos">Contratos<span class="cnt" id="cntC">0</span></button>
+  <button class="tab" data-tab="notas">Notas fiscais<span class="cnt" id="cntN">0</span></button>
+  <button class="tab" data-tab="relatorios">Relatórios</button>
+  <button class="tab" data-tab="config">Configurações</button>
+</nav>
+<main class="wrap">
+  <div id="banner"></div>
+  <section class="panel active" id="panel-painel"></section>
+  <section class="panel" id="panel-contratantes"></section>
+  <section class="panel" id="panel-contratos"></section>
+  <section class="panel" id="panel-notas"></section>
+  <section class="panel" id="panel-relatorios"></section>
+  <section class="panel" id="panel-config"></section>
+</main>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<div class="updbar" id="updbar"><span>Nova versão do app disponível</span><button class="btn sm primary" onclick="aplicarAtualizacao()">Atualizar agora</button></div>
+<script>
+/* ================= estado ================= */
+const APP_VERSION="R03";
+const LS_CACHE="polis.pagamentos.app.cache";
+const DATA_FILE="controle-pagamentos.json";
+const DISC_PADRAO=["Terraplenagem","Drenagem","Água","Esgoto","Estação elevatória de esgoto","Pavimentação","Sinalização","EIV","RIT","PGRCC","PGRS"];
+const TIPOS_PADRAO=["Construtora / incorporadora","Loteadora","Poder público","Pessoa física","Outros"];
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const norm=x=>String(x||"").trim().toLowerCase();
+function blankState(){ return {version:2,updatedAt:0,disciplinas:DISC_PADRAO.slice(),tiposContratante:TIPOS_PADRAO.slice(),contratantes:[],contratos:[],notas:[]}; }
+function migrate(s){
+  s=s||blankState();
+  if(!s.fileId) s.fileId=uid();
+  s.version=2;
+  if(!Array.isArray(s.disciplinas)) s.disciplinas=DISC_PADRAO.slice();
+  if(!Array.isArray(s.tiposContratante)) s.tiposContratante=TIPOS_PADRAO.slice();
+  s.contratantes=(s.contratantes||[]).map(k=>({id:k.id||uid(),nome:k.nome||"",tipo:k.tipo||"",documento:k.documento||"",contato:k.contato||"",obs:k.obs||""}));
+  s.contratos=(s.contratos||[]).map(c=>{
+    let kid=c.contratanteId;
+    if(!kid || !s.contratantes.some(k=>k.id===kid)){
+      /* versões anteriores guardavam o nome do cliente como texto: agrupa pelo nome */
+      const nome=(c.cliente||"").trim()||"(sem contratante)";
+      let k=s.contratantes.find(k=>norm(k.nome)===norm(nome));
+      if(!k){ k={id:uid(),nome,tipo:"",documento:"",contato:"",obs:""}; s.contratantes.push(k); }
+      kid=k.id;
+    }
+    return {id:c.id||uid(),contratanteId:kid,empreendimento:c.empreendimento||"",proposta:c.proposta||c.numero||"",numContrato:c.numContrato||"",
+      data:c.data||"",valor:+c.valor||0,disciplinas:(c.disciplinas||[]).map(d=>({id:d.id||uid(),nome:d.nome||"",valor:+d.valor||0})),
+      condicao:c.condicao||"",prox:c.prox||{data:"",descricao:"",valor:0},obs:c.obs||"",encerrado:!!c.encerrado};
+  });
+  s.notas=(s.notas||[]).map(n=>({id:n.id||uid(),contratoId:n.contratoId,numero:n.numero||"",data:n.data||"",valor:+n.valor||0,
+    descricao:n.descricao||"",status:n.status||"emitida",dataPagamento:n.dataPagamento||"",rateio:n.rateio||{},obs:n.obs||""}));
+  delete s.savedAt;
+  return s;
+}
+function lsGet(k){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):null; }catch(e){ return null; } }
+let state=migrate(lsGet(LS_CACHE));
+const temDados=s=>!!((s.contratos||[]).length||(s.notas||[]).length);
+function cacheLocal(){ try{ localStorage.setItem(LS_CACHE,JSON.stringify(state)); }catch(e){} }
+function touch(){ state.updatedAt=Date.now(); cacheLocal(); scheduleSave(); updateFlag(); }
+
+/* ================= pasta de dados (File System Access) =================
+   O app grava automaticamente em DATA_FILE dentro da pasta escolhida pelo usuário
+   e mantém uma cópia por dia em /backups. O acesso à pasta fica guardado no IndexedDB. */
+const idb={
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open("polis-pagamentos",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ const db=await this.open(); return new Promise(res=>{ const q=db.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }); },
+  async set(k,v){ const db=await this.open(); return new Promise(res=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); }); }
+};
+const FS={dir:null,status:"init",lastSave:0,err:"",timer:null,backupDay:"",saving:false,again:false};
+const fsSupported=()=>"showDirectoryPicker" in window;
+async function fsInit(){
+  if(!fsSupported()){ FS.status="unsupported"; render(); return; }
+  let h=null; try{ h=await idb.get("dir"); }catch(e){}
+  if(!h){ FS.status="none"; render(); return; }
+  FS.dir=h;
+  let p="granted"; try{ if(h.queryPermission) p=await h.queryPermission({mode:"readwrite"}); }catch(e){ p="prompt"; }
+  if(p==="granted") await fsAfterConnect(false); else { FS.status="ask"; render(); }
+}
+async function fsChoose(){
+  try{
+    const h=await window.showDirectoryPicker({id:"polis-pagamentos",mode:"readwrite",startIn:"documents"});
+    FS.dir=h; await idb.set("dir",h); await fsAfterConnect(true);
+  }catch(e){ if(e&&e.name!=="AbortError") toast("Não foi possível acessar a pasta"); }
+}
+async function fsReconnect(){
+  if(!FS.dir) return fsChoose();
+  try{ const p=await FS.dir.requestPermission({mode:"readwrite"}); if(p==="granted") await fsAfterConnect(false); }
+  catch(e){ toast("A pasta não está mais acessível. Escolha novamente."); fsChoose(); }
+}
+async function fsReadMain(){
+  try{ const fh=await FS.dir.getFileHandle(DATA_FILE); return JSON.parse(await (await fh.getFile()).text()); }catch(e){ return null; }
+}
+async function fsAfterConnect(novaPasta){
+  FS.status="ok";
+  const disk=await fsReadMain();
+  let gravar=false;
+  if(!disk){ gravar=true; }
+  else if(!temDados(state)){ state=migrate(disk); cacheLocal(); }
+  else if(disk.fileId===state.fileId){
+    if((disk.updatedAt||0)>=(state.updatedAt||0)){ state=migrate(disk); cacheLocal(); }
+    else gravar=true;   /* houve alterações enquanto a pasta estava desconectada */
+  } else {
+    const nD=(disk.contratos||[]).length, nL=state.contratos.length;
+    if(confirm(`A pasta escolhida já tem um controle com ${nD} contrato(s).\n\nOK = abrir os dados da pasta\nCancelar = gravar na pasta os dados que estão neste app (${nL} contrato(s)); o arquivo atual da pasta vai para /backups.`)){
+      state=migrate(disk); cacheLocal();
+    } else { await fsBackupNow("antes-de-substituir"); gravar=true; }
+  }
+  render();
+  if(gravar) await fsSave();
+  if(novaPasta) toast(`Pasta “${FS.dir.name}” conectada — salvamento automático ativado`);
+}
+function scheduleSave(){
+  if(!FS.dir||FS.status==="ask"||FS.status==="none"||FS.status==="unsupported") return;
+  clearTimeout(FS.timer); FS.timer=setTimeout(fsSave,400); FS.pending=true;
+}
+async function backupsDir(){ return FS.dir.getDirectoryHandle("backups",{create:true}); }
+async function writeText(dir,name,txt){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(txt); await w.close(); }
+async function fsBackupNow(rotulo){
+  if(!FS.dir) return;
+  try{
+    const prev=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(()=>null);
+    if(prev){ const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-"); await writeText(await backupsDir(),`controle-pagamentos_${ts}_${rotulo}.json`,prev); }
+  }catch(e){}
+}
+async function pruneBackups(bdir){
+  try{
+    const nomes=[]; for await (const [n,h] of bdir.entries()) if(h.kind==="file"&&/^controle-pagamentos_\d{4}-\d{2}-\d{2}\.json$/.test(n)) nomes.push(n);
+    nomes.sort(); for(const n of nomes.slice(0,Math.max(0,nomes.length-60))) await bdir.removeEntry(n);
+  }catch(e){}
+}
+async function fsSave(){
+  clearTimeout(FS.timer); FS.pending=false;
+  if(!FS.dir) return;
+  if(FS.saving){ FS.again=true; return; }
+  FS.saving=true; FS.status="ok"; updateFlag();
+  try{
+    const day=todayISO();
+    if(FS.backupDay!==day){
+      const bdir=await backupsDir(), nome=`controle-pagamentos_${day}.json`;
+      let existe=true; try{ await bdir.getFileHandle(nome); }catch(e){ existe=false; }
+      if(!existe){
+        const prev=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(()=>null);
+        if(prev) await writeText(bdir,nome,prev);
+        await pruneBackups(bdir);
+      }
+      FS.backupDay=day;
+    }
+    await writeText(FS.dir,DATA_FILE,JSON.stringify(state,null,1));
+    FS.lastSave=Date.now(); FS.err="";
+  }catch(e){
+    FS.err=e&&e.message||String(e);
+    FS.status=(e&&e.name==="NotAllowedError")?"ask":"error";
+  }
+  FS.saving=false; updateFlag();
+  if(FS.again){ FS.again=false; fsSave(); }
+}
+function flushSave(){ if(FS.pending) fsSave(); }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushSave(); });
+window.addEventListener("pagehide",flushSave);
+window.addEventListener("beforeunload",e=>{ if(FS.pending||FS.saving){ flushSave(); e.preventDefault(); e.returnValue=""; } });
+
+function updateFlag(){
+  const el=document.getElementById("saveflag"); if(!el) return;
+  const hm=t=>new Date(t).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  let cls="", txt="", tip="", act=null;
+  switch(FS.status){
+    case "unsupported": cls="pending"; txt="Use Chrome ou Edge para salvar em pasta"; tip="Este navegador não permite gravar numa pasta. Os dados ficam só no navegador — exporte backups."; break;
+    case "none": cls="pending"; txt="Escolher pasta de dados"; tip="Os dados ainda estão só no navegador. Clique para escolher a pasta onde o app vai salvar automaticamente."; act=fsChoose; break;
+    case "ask": cls="pending"; txt="Clique para reconectar a pasta"; tip="O navegador pede uma confirmação para voltar a gravar na pasta de dados."; act=fsReconnect; break;
+    case "error": cls="err"; txt="Erro ao salvar — tentar de novo"; tip=FS.err; act=fsSave; break;
+    case "ok": if(FS.saving||FS.pending){ cls="busy"; txt="Salvando…"; } else { cls="ok"; txt=FS.lastSave?`Salvo · ${hm(FS.lastSave)}`:"Salvamento automático ativo"; } tip=FS.dir?`Pasta de dados: ${FS.dir.name}`:""; break;
+    default: txt="";
+  }
+  el.className="saveflag "+cls; el.textContent=txt; el.title=tip; el.onclick=act; el.disabled=!act;
+}
+function renderBanner(){
+  const el=document.getElementById("banner"); if(!el) return;
+  if(FS.status==="none") el.innerHTML=`<div class="card setup"><div class="body">
+      <h3>Onde os dados vão ficar gravados?</h3>
+      <p>Escolha uma pasta no computador — de preferência dentro do OneDrive ou Google Drive, para ter cópia na nuvem. O app grava ali, automaticamente, o arquivo <span class="mono">${DATA_FILE}</span> a cada alteração, e mantém uma cópia por dia em <span class="mono">backups</span>.</p>
+      <div class="row-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" onclick="fsChoose()">Escolher pasta de dados</button>
+      ${temDados(state)?"":`<button class="btn" onclick="$('fileInput').click()">Importar planilha antiga (.html ou .json)</button>`}</div>
+      <p class="hint" style="margin-top:10px">Se escolher uma pasta que já tem o arquivo de dados, o app abre o que estiver nela.</p></div></div>`;
+  else if(FS.status==="ask") el.innerHTML=`<div class="card setup"><div class="body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <div><h3>Reconectar a pasta “${esc(FS.dir&&FS.dir.name||"")}”</h3><p class="hint">Por segurança o navegador pede uma confirmação para voltar a gravar na pasta. ${temDados(state)?"Os dados abaixo são a última cópia guardada no app.":""}</p></div>
+      <button class="btn primary" onclick="fsReconnect()">Reconectar e continuar</button></div></div>`;
+  else if(FS.status==="unsupported") el.innerHTML=`<div class="alert warn">Este navegador não permite gravar numa pasta do computador. Abra o app no Google Chrome ou no Microsoft Edge. Enquanto isso, os dados ficam só neste navegador — use "Exportar backup".</div>`;
+  else el.innerHTML="";
+}
+
+/* ================= utilidades ================= */
+const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const brl=v=>BRL.format(+v||0);
+const nf2=v=>(+v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+function parseMoney(s){
+  if(typeof s==="number") return s;
+  s=String(s||"").replace(/R\$|\s/g,"");
+  if(!s) return 0;
+  if(s.includes(",")) s=s.replace(/\./g,"").replace(",",".");
+  else if((s.match(/\./g)||[]).length>1 || /\.\d{3}$/.test(s)) s=s.replace(/\./g,"");
+  const v=parseFloat(s); return isFinite(v)?Math.round(v*100)/100:0;
+}
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fdate=d=>{ if(!d) return "—"; const [y,m,dd]=d.split("-"); return `${dd}/${m}/${y}`; };
+const todayISO=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const daysBetween=(a,b)=>Math.round((new Date(b+"T12:00")-new Date(a+"T12:00"))/86400000);
+const sum=(arr,f)=>arr.reduce((a,x)=>a+(+f(x)||0),0);
+const EPS=0.005;
+const temProx=p=>!!(p&&(p.data||p.descricao||p.valor));
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
+const cById=id=>state.contratos.find(c=>c.id===id);
+const cNome=c=>c? [cliNome(c),c.empreendimento].filter(Boolean).join(" – ") || "(sem nome)" : "(contrato excluído)";
+
+/* ================= cálculos ================= */
+function notasDe(c){ return state.notas.filter(n=>n.contratoId===c.id && n.status!=="cancelada"); }
+function resumo(c){
+  const ns=notasDe(c), fat=sum(ns,n=>n.valor), rec=sum(ns.filter(n=>n.status==="paga"),n=>n.valor);
+  const saldo=c.valor-fat;
+  let st;
+  if(c.encerrado) st={k:"enc",t:"Encerrado",cls:"b-mut"};
+  else if(saldo<=EPS && fat-rec<=EPS) st={k:"quit",t:"Quitado",cls:"b-ok"};
+  else if(saldo<=EPS) st={k:"fat",t:"100% faturado",cls:"b-info"};
+  else st={k:"and",t:"Em andamento",cls:"b-warn"};
+  return {fat,rec,aberto:fat-rec,saldo,pctFat:c.valor?fat/c.valor:0,pctRec:c.valor?rec/c.valor:0,st};
+}
+function resumoDisc(c){
+  const ns=notasDe(c);
+  const rows=c.disciplinas.map(d=>{ const f=sum(ns,n=>(n.rateio||{})[d.id]||0); return {d,contratado:d.valor,faturado:f,saldo:d.valor-f}; });
+  const naoRateado=sum(ns,n=>n.valor-sum(Object.values(n.rateio||{}),v=>v));
+  return {rows,naoRateado};
+}
+function ativo(c){ const r=resumo(c); return r.st.k==="and"; }
+function progressBar(r){
+  const pg=Math.min(100,r.pctRec*100), em=Math.max(0,Math.min(100,r.pctFat*100)-pg);
+  return `<div class="bar" title="Recebido ${(r.pctRec*100).toFixed(0)}% · Faturado ${(r.pctFat*100).toFixed(0)}%"><i class="pg" style="width:${pg}%"></i><i class="em" style="width:${em}%"></i></div>`;
+}
+function statusNota(n){
+  if(n.status==="paga") return `<span class="badge b-ok">Paga</span>`;
+  if(n.status==="cancelada") return `<span class="badge b-mut">Cancelada</span>`;
+  const d=n.data?daysBetween(n.data,todayISO()):0;
+  return `<span class="badge ${d>30?"b-red":"b-warn"}">Aguardando${n.data?` · ${d} d`:""}</span>`;
+}
+
+/* ================= abas ================= */
+let curTab="painel";
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+function showTab(t){
+  curTab=t;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+t));
+  render();
+  window.scrollTo({top:0});
+}
+function render(){
+  document.getElementById("cntC").textContent=state.contratos.length;
+  document.getElementById("cntN").textContent=state.notas.length;
+  document.getElementById("cntK").textContent=state.contratantes.length;
+  renderBanner();
+  ({painel:renderPainel,contratantes:renderContratantes,contratos:renderContratos,notas:renderNotas,relatorios:renderRelatorios,config:renderConfig})[curTab]();
+  updateFlag();
+}
+
+/* ================= PAINEL ================= */
+function renderPainel(){
+  const el=document.getElementById("panel-painel");
+  if(!state.contratos.length){
+    el.innerHTML=`<div class="card"><div class="empty">
+      <h3 style="margin-bottom:6px">Nenhum contrato cadastrado</h3>
+      <div>Cadastre o primeiro contrato para começar a controlar as notas emitidas e os saldos.</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <button class="btn primary" onclick="openContrato()">Novo contrato</button>
+        <button class="btn" onclick="loadExample()">Carregar exemplo</button>
+      </div></div></div>`;
+    return;
+  }
+  const vivos=state.contratos.filter(c=>!c.encerrado);
+  const R=vivos.map(c=>({c,r:resumo(c)}));
+  const tot={valor:sum(vivos,c=>c.valor),fat:sum(R,x=>x.r.fat),rec:sum(R,x=>x.r.rec),aberto:sum(R,x=>x.r.aberto),saldo:sum(R,x=>Math.max(0,x.r.saldo))};
+  const hoje=todayISO(), mes=hoje.slice(0,7);
+  const fatMes=sum(state.notas.filter(n=>n.status!=="cancelada"&&n.data.startsWith(mes)),n=>n.valor);
+  const recMes=sum(state.notas.filter(n=>n.status==="paga"&&(n.dataPagamento||"").startsWith(mes)),n=>n.valor);
+
+  // agenda de cobranças
+  const comProx=R.filter(x=>x.r.st.k==="and" && temProx(x.c.prox)).sort((a,b)=>(a.c.prox.data||"9999").localeCompare(b.c.prox.data||"9999"));
+  const semProx=R.filter(x=>x.r.st.k==="and" && !temProx(x.c.prox));
+  const agenda=comProx.map(({c,r})=>{
+    const d=c.prox.data; const late=d&&d<hoje; const dd=d?daysBetween(hoje,d):null;
+    const tag= !d?`<span class="badge b-mut">sem data</span>`: late?`<span class="badge b-red">atrasada ${-dd} d</span>`: dd<=7?`<span class="badge b-warn">${dd===0?"hoje":"em "+dd+" d"}</span>`:"";
+    return `<div class="agenda-item"><div class="d">${fdate(d)}</div>
+      <div><div class="t">${esc(cNome(c))} ${tag}</div><div class="s">${esc(c.prox.descricao||"")}${c.prox.valor?` · previsto ${brl(c.prox.valor)}${pctOf(c.prox.valor,c)}`:""} · saldo ${brl(r.saldo)}</div></div>
+      <div class="row-actions"><button class="btn sm primary" onclick="openNota({contratoId:'${c.id}'})">Emitir nota</button></div></div>`;
+  }).join("") + (semProx.length?`<div class="agenda-item" style="background:var(--calc)"><div class="d">—</div><div><div class="t">Com saldo e sem próxima cobrança definida</div>
+      <div class="s">${semProx.map(({c,r})=>`<a href="#" onclick="goContrato('${c.id}');return false">${esc(cNome(c))}</a> (${brl(r.saldo)})`).join(" · ")}</div></div><div></div></div>`:"");
+
+  // aguardando pagamento
+  const aguard=state.notas.filter(n=>n.status==="emitida").sort((a,b)=>a.data.localeCompare(b.data));
+  const aguardHtml=aguard.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Contrato</th><th class="r">Valor</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${aguard.map(n=>`<tr><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td><td>${esc(cNome(cById(n.contratoId)))}</td><td class="r num">${brl(n.valor)}</td><td>${statusNota(n)}</td>
+      <td><div class="row-actions"><button class="btn sm" onclick="marcarPaga('${n.id}')">Marcar paga</button></div></td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="3">Total a receber</td><td class="r num">${brl(sum(aguard,n=>n.valor))}</td><td colspan="2"></td></tr></tfoot></table></div>`
+    :`<div class="empty">Nenhuma nota aguardando pagamento.</div>`;
+
+  // tabela de contratos
+  const linhas=R.sort((a,b)=>b.r.saldo-a.r.saldo).map(({c,r})=>`<tr class="click" onclick="goContrato('${c.id}')">
+    <td><b>${esc(cliNome(c)||"—")}</b><div class="hint">${esc(c.empreendimento)}</div></td>
+    <td class="r num">${brl(c.valor)}</td><td class="r num">${brl(r.fat)}</td><td class="r num">${brl(r.rec)}</td>
+    <td class="r num" style="${r.saldo>EPS?"font-weight:650":""}">${brl(r.saldo)}</td>
+    <td style="min-width:120px">${progressBar(r)}</td><td>${`<span class="badge ${r.st.cls}">${r.st.t}</span>`}</td></tr>`).join("");
+
+  el.innerHTML=`
+  <div class="strip">
+    <div class="chip"><span class="k">Contratado</span><span class="v">${brl(tot.valor)}</span><span class="u">${R.filter(x=>x.r.st.k==='and').length} em andamento · ${vivos.length} no total</span></div>
+    <div class="chip"><span class="k">Faturado (NFs emitidas)</span><span class="v">${brl(tot.fat)}</span><span class="u">${tot.valor?(tot.fat/tot.valor*100).toFixed(0):0}% do contratado · ${brl(fatMes)} este mês</span></div>
+    <div class="chip good"><span class="k">Recebido</span><span class="v">${brl(tot.rec)}</span><span class="u">${brl(recMes)} este mês</span></div>
+    <div class="chip warn"><span class="k">A receber (emitido, não pago)</span><span class="v">${brl(tot.aberto)}</span><span class="u">${aguard.length} nota(s)</span></div>
+    <div class="chip hl"><span class="k">Saldo a faturar</span><span class="v">${brl(tot.saldo)}</span><span class="u">ainda sem nota emitida</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><header><div><h3>Próximas cobranças</h3><p class="hint">Uma previsão por contrato, atualizada a cada nota emitida</p></div>
+      <button class="btn sm primary no-print" onclick="openNota({})">Emitir nota</button></header>
+      ${agenda||`<div class="empty">Nenhuma cobrança prevista.</div>`}</div>
+    <div class="card"><header><h3>Notas aguardando pagamento</h3></header>${aguardHtml}</div>
+  </div>
+  <div class="card"><header><h3>Faturamento mensal · últimos 12 meses</h3><div class="legend"><span style="--c:var(--water)">Recebido</span><span style="--c:var(--water-fill)">Emitido, aguardando</span></div></header>
+    <div class="body chart">${chartMensal()}</div></div>
+  <div class="card"><header><h3>Contratos ativos</h3><div class="toolbar no-print"><button class="btn sm" onclick="openContrato()">Novo contrato</button></div></header>
+    <div class="tablewrap"><table><thead><tr><th>Contratante / obra</th><th class="r">Contratado</th><th class="r">Faturado</th><th class="r">Recebido</th><th class="r">Saldo a faturar</th><th>Andamento</th><th>Situação</th></tr></thead>
+    <tbody>${linhas}</tbody>
+    <tfoot><tr><td>Total</td><td class="r num">${brl(tot.valor)}</td><td class="r num">${brl(tot.fat)}</td><td class="r num">${brl(tot.rec)}</td><td class="r num">${brl(tot.saldo)}</td><td colspan="2"></td></tr></tfoot></table></div></div>`;
+}
+function chartMensal(){
+  const now=new Date(); const meses=[];
+  for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); meses.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")); }
+  const data=meses.map(m=>{ const ns=state.notas.filter(n=>n.status!=="cancelada"&&n.data.startsWith(m));
+    return {m,pg:sum(ns.filter(n=>n.status==="paga"),n=>n.valor),em:sum(ns.filter(n=>n.status==="emitida"),n=>n.valor)}; });
+  const max=Math.max(1,...data.map(d=>d.pg+d.em));
+  const W=1000,H=170,pl=10,pb=34,pt=20,bw=(W-pl*2)/12;
+  const nm=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const k=v=>v>=1e6?(v/1e6).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mi":v>=1e3?(v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:0})+" mil":v?v.toFixed(0):"";
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Faturamento mensal">`;
+  s+=`<line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="#D5D2E6"/>`;
+  data.forEach((d,i)=>{
+    const x=pl+i*bw+bw*0.2, w=bw*0.6, hp=(d.pg/max)*(H-pb-pt), he=(d.em/max)*(H-pb-pt);
+    const y0=H-pb;
+    s+=`<rect x="${x}" y="${y0-hp}" width="${w}" height="${hp}" fill="#5145B8" rx="2"><title>${brl(d.pg)} recebido</title></rect>`;
+    s+=`<rect x="${x}" y="${y0-hp-he}" width="${w}" height="${he}" fill="#BDB6F0" rx="2"><title>${brl(d.em)} aguardando</title></rect>`;
+    const tot=d.pg+d.em;
+    if(tot) s+=`<text x="${x+w/2}" y="${y0-hp-he-5}" text-anchor="middle" font-size="12" fill="#2E2B57" font-family="ui-monospace,Consolas,monospace">${k(tot)}</text>`;
+    const [yy,mm]=d.m.split("-");
+    s+=`<text x="${x+w/2}" y="${H-pb+16}" text-anchor="middle" font-size="12" fill="#625E80">${nm[+mm-1]}</text>`;
+    if(mm==="01"||i===0) s+=`<text x="${x+w/2}" y="${H-pb+30}" text-anchor="middle" font-size="10.5" fill="#625E80">${yy}</text>`;
+  });
+  return s+"</svg>";
+}
+function goContrato(id){ selContrato=id; showTab("contratos"); }
+function marcarPaga(id){
+  const n=state.notas.find(x=>x.id===id); if(!n) return;
+  n.status="paga"; n.dataPagamento=todayISO(); touch(); render();
+  toast(`NF ${n.numero} marcada como paga em ${fdate(n.dataPagamento)} (edite se a data for outra)`);
+}
+/* ================= CONTRATOS ================= */
+let selContrato=null, fC={q:"",st:"and",tipo:"",kid:""};
+function renderContratos(){
+  const el=document.getElementById("panel-contratos");
+  const q=fC.q.toLowerCase();
+  let lista=state.contratos.map(c=>({c,r:resumo(c)}))
+    .filter(({c,r})=>(fC.st==="todos"||(fC.st==="and"?r.st.k==="and":r.st.k!=="and")) && (!fC.tipo||cliTipo(c)===fC.tipo) && (!fC.kid||c.contratanteId===fC.kid)
+      && (!q||(cliNome(c)+" "+c.empreendimento+" "+c.proposta+" "+c.numContrato).toLowerCase().includes(q)))
+    .sort((a,b)=>(cliNome(a.c)+a.c.empreendimento).localeCompare(cliNome(b.c)+b.c.empreendimento,"pt-BR"));
+  if(selContrato && !cById(selContrato)) selContrato=null;
+  if(!selContrato && lista.length) selContrato=lista[0].c.id;
+  const items=lista.map(({c,r})=>`<div class="citem ${c.id===selContrato?"sel":""}" onclick="selContrato='${c.id}';renderContratos()">
+      <div class="t">${esc(cliNome(c)||"—")}</div>
+      <div class="s"><span>${[esc(c.empreendimento),c.proposta&&`<span class="num">${esc(c.proposta)}</span>`].filter(Boolean).join(" · ")}</span><span class="badge ${r.st.cls}">${r.st.t}</span></div>
+      ${progressBar(r)}
+      <div class="s"><span class="num">${brl(r.fat)} de ${brl(c.valor)}</span><span class="num">saldo ${brl(r.saldo)}</span></div></div>`).join("");
+  el.innerHTML=`<div class="split">
+    <div class="card"><header class="clist-head"><div class="toolbar" style="width:100%">
+        <input class="inp" style="flex:1" placeholder="Buscar contratante, obra, nº" value="${esc(fC.q)}" oninput="fC.q=this.value;renderContratos();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+        <button class="btn sm primary" onclick="openContrato()">Novo contrato</button></div>
+        <div class="seg">${[["and","Em andamento"],["out","Concluídos"],["todos","Todos"]].map(([k,t])=>`<button class="${fC.st===k?"on":""}" onclick="fC.st='${k}';selContrato=null;renderContratos()">${t}</button>`).join("")}</div>
+        <div class="toolbar"><select class="inp" style="flex:1;min-width:0" onchange="fC.tipo=this.value;fC.kid='';selContrato=null;renderContratos()">${tipoOpts(fC.tipo,"Todos os tipos")}</select>
+          <select class="inp" style="flex:1;min-width:0" onchange="fC.kid=this.value;selContrato=null;renderContratos()"><option value="">Todos os contratantes</option>${state.contratantes.filter(k=>!fC.tipo||k.tipo===fC.tipo).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(k=>`<option value="${k.id}" ${fC.kid===k.id?"selected":""}>${esc(k.nome)}</option>`).join("")}</select></div>
+      </header>
+      <div class="clist">${items||`<div class="empty">Nenhum contrato neste filtro.</div>`}</div></div>
+    <div id="cdetail">${selContrato?detalheContrato(cById(selContrato)):`<div class="card"><div class="empty">Cadastre ou selecione um contrato.<br><button class="btn primary" style="margin-top:10px" onclick="openContrato()">Novo contrato</button></div></div>`}</div>
+  </div>`;
+}
+function detalheContrato(c){
+  const r=resumo(c), D=resumoDisc(c), hoje=todayISO();
+  const ns=state.notas.filter(n=>n.contratoId===c.id).sort((a,b)=>a.data.localeCompare(b.data));
+  const temValDisc=c.disciplinas.some(d=>d.valor>0);
+  const discHtml=c.disciplinas.length?`<div class="tablewrap"><table><thead><tr><th>Disciplina</th><th class="r">Contratado</th><th class="r">Faturado</th><th class="r">Saldo</th><th style="width:22%">Andamento</th></tr></thead><tbody>
+    ${D.rows.map(x=>`<tr><td>${esc(x.d.nome)}</td><td class="r num">${x.contratado?brl(x.contratado):"—"}</td><td class="r num">${x.faturado?brl(x.faturado):"—"}</td>
+      <td class="r num">${x.contratado?brl(x.saldo):"—"}</td><td>${x.contratado?progressBar({pctRec:0,pctFat:x.faturado/x.contratado}):""}</td></tr>`).join("")}
+    ${D.naoRateado>EPS?`<tr><td class="muted"><i>Faturado sem rateio por disciplina</i></td><td></td><td class="r num">${brl(D.naoRateado)}</td><td></td><td></td></tr>`:""}
+    </tbody>${temValDisc?`<tfoot><tr><td>Total</td><td class="r num">${brl(sum(c.disciplinas,d=>d.valor))}</td><td class="r num">${brl(r.fat)}</td><td class="r num">${brl(sum(c.disciplinas,d=>d.valor)-r.fat)}</td><td></td></tr></tfoot>`:""}</table></div>`
+    :`<div class="empty">Nenhuma disciplina marcada.</div>`;
+  const p=c.prox, late=p.data&&p.data<hoje&&r.st.k==="and";
+  const proxHtml= r.st.k!=="and" ? "" : `<div class="nextbox ${late?"late":temProx(p)?"":"none"}" style="margin-bottom:16px">
+      <div><div style="font-size:12px;color:var(--muted);font-weight:600">Próxima cobrança</div>
+      <div style="font-weight:650">${temProx(p)?`${[p.data&&fdate(p.data),esc(p.descricao),p.valor&&brl(p.valor)+pctOf(p.valor,c)].filter(Boolean).join(" · ")} ${late?`<span class="badge b-red">atrasada</span>`:""}`:"Não definida"}</div></div>
+      <div class="row-actions"><button class="btn sm" onclick="editProx('${c.id}')">Alterar previsão</button><button class="btn sm primary" onclick="openNota({contratoId:'${c.id}'})">Emitir nota</button></div></div>`;
+  const notasHtml=ns.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Descrição</th><th class="r">Valor</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
+    ${ns.map(n=>`<tr style="${n.status==="cancelada"?"opacity:.55;text-decoration:line-through":""}"><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td><td>${esc(n.descricao)}</td><td class="r num">${brl(n.valor)}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
+      <td><div class="row-actions">${n.status==="emitida"?`<button class="btn sm" onclick="marcarPaga('${n.id}')">Paga</button>`:""}<button class="btn sm" onclick="openNota({notaId:'${n.id}'})">Editar</button></div></td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="3">Total faturado</td><td class="r num">${brl(r.fat)}</td><td colspan="3"></td></tr></tfoot></table></div>`
+    :`<div class="empty">Nenhuma nota emitida para este contrato.</div>`;
+  return `<div class="card"><header><div><h3 style="font-size:17px"><a href="#" class="klink" onclick="selK='${c.contratanteId}';showTab('contratantes');return false">${esc(cliNome(c)||"—")}</a></h3><div class="hint">${[esc(c.empreendimento),c.proposta&&"Proposta "+esc(c.proposta),c.numContrato&&"Contrato "+esc(c.numContrato),c.data&&"assinado em "+fdate(c.data)].filter(Boolean).join(" · ")}</div></div>
+      <div class="row-actions no-print"><span class="badge ${r.st.cls}" style="align-self:center">${r.st.t}</span><button class="btn sm" onclick="openContrato('${c.id}')">Editar contrato</button></div></header>
+    <div class="body">
+      <div class="strip" style="margin-bottom:14px">
+        <div class="chip"><span class="k">Contratado</span><span class="v">${brl(c.valor)}</span></div>
+        <div class="chip"><span class="k">Faturado</span><span class="v">${brl(r.fat)}</span><span class="u">${(r.pctFat*100).toFixed(1)}%</span></div>
+        <div class="chip good"><span class="k">Recebido</span><span class="v">${brl(r.rec)}</span><span class="u">${(r.pctRec*100).toFixed(1)}%</span></div>
+        <div class="chip warn"><span class="k">A receber</span><span class="v">${brl(r.aberto)}</span></div>
+        <div class="chip hl"><span class="k">Saldo a faturar</span><span class="v">${brl(r.saldo)}</span></div>
+      </div>
+      ${r.saldo<-EPS?`<div class="alert warn">As notas somam ${brl(-r.saldo)} a mais que o valor do contrato. Se houve aditivo, atualize o valor em "Editar contrato".</div>`:""}
+      ${proxHtml}
+      ${(c.condicao||c.obs)?`<dl class="kv" style="margin:0 0 16px">${c.condicao?`<dt>Condição de pagamento</dt><dd>${esc(c.condicao)}</dd>`:""}${c.obs?`<dt>Observações</dt><dd>${esc(c.obs)}</dd>`:""}</dl>`:""}
+    </div></div>
+    <div class="card"><header><h3>Disciplinas</h3><span class="hint">Valores por disciplina são opcionais</span></header>${discHtml}</div>
+    <div class="card"><header><h3>Notas fiscais</h3><button class="btn sm primary no-print" onclick="openNota({contratoId:'${c.id}'})">Emitir nota</button></header>${notasHtml}</div>`;
+}
+
+/* ================= NOTAS ================= */
+let fN={q:"",st:"todas",ano:""};
+function renderNotas(){
+  const el=document.getElementById("panel-notas");
+  const anos=[...new Set(state.notas.map(n=>n.data.slice(0,4)).filter(Boolean))].sort().reverse();
+  const q=fN.q.toLowerCase();
+  const lista=state.notas.filter(n=>(fN.st==="todas"||n.status===fN.st)&&(!fN.ano||n.data.startsWith(fN.ano))&&
+      (!q||(n.numero+" "+n.descricao+" "+cNome(cById(n.contratoId))).toLowerCase().includes(q)))
+    .sort((a,b)=>b.data.localeCompare(a.data)||String(b.numero).localeCompare(String(a.numero),"pt-BR",{numeric:true}));
+  const val=lista.filter(n=>n.status!=="cancelada");
+  el.innerHTML=`<div class="card"><header>
+      <div class="toolbar">
+        <input class="inp" placeholder="Buscar nº, contratante, descrição" value="${esc(fN.q)}" oninput="fN.q=this.value;renderNotas();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+        <div class="seg">${[["todas","Todas"],["emitida","Aguardando"],["paga","Pagas"],["cancelada","Canceladas"]].map(([k,t])=>`<button class="${fN.st===k?"on":""}" onclick="fN.st='${k}';renderNotas()">${t}</button>`).join("")}</div>
+        <select class="inp" onchange="fN.ano=this.value;renderNotas()"><option value="">Todos os anos</option>${anos.map(a=>`<option ${fN.ano===a?"selected":""}>${a}</option>`).join("")}</select>
+      </div>
+      <div class="row-actions no-print"><button class="btn sm" onclick="exportNotasCsv()">Exportar (Excel)</button><button class="btn sm primary" onclick="openNota({})">Emitir nota</button></div></header>
+    ${lista.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Contrato</th><th>Descrição</th><th class="r">Valor</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
+      ${lista.map(n=>`<tr style="${n.status==="cancelada"?"opacity:.55":""}"><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td>
+        <td><a href="#" onclick="goContrato('${n.contratoId}');return false">${esc(cNome(cById(n.contratoId)))}</a></td><td>${esc(n.descricao)}</td>
+        <td class="r num">${brl(n.valor)}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
+        <td><div class="row-actions">${n.status==="emitida"?`<button class="btn sm" onclick="marcarPaga('${n.id}')">Paga</button>`:""}<button class="btn sm" onclick="openNota({notaId:'${n.id}'})">Editar</button></div></td></tr>`).join("")}
+      </tbody><tfoot><tr><td colspan="4">${val.length} nota(s) válidas · recebido ${brl(sum(val.filter(n=>n.status==="paga"),n=>n.valor))}</td><td class="r num">${brl(sum(val,n=>n.valor))}</td><td colspan="3"></td></tr></tfoot></table></div>`
+    :`<div class="empty">${state.notas.length?"Nenhuma nota neste filtro.":"Nenhuma nota emitida ainda."}</div>`}</div>`;
+}
+
+/* ================= CONTRATANTES ================= */
+const kById=id=>state.contratantes.find(k=>k.id===id);
+const cliNome=c=>{ const k=c&&kById(c.contratanteId); return k?k.nome:""; };
+const cliTipo=c=>{ const k=c&&kById(c.contratanteId); return k?k.tipo:""; };
+let selK=null, fK={q:"",tipo:""};
+function resumoK(k){
+  const cs=state.contratos.filter(c=>c.contratanteId===k.id), R=cs.map(c=>resumo(c));
+  return {cs,valor:sum(cs,c=>c.valor),fat:sum(R,r=>r.fat),rec:sum(R,r=>r.rec),aberto:sum(R,r=>r.aberto),
+    saldo:sum(cs.filter(c=>!c.encerrado),c=>Math.max(0,resumo(c).saldo)),andamento:R.filter(r=>r.st.k==="and").length};
+}
+function tipoOpts(sel,vazio="—"){
+  const tipos=state.tiposContratante.slice(); if(sel&&!tipos.includes(sel)) tipos.push(sel);
+  return `<option value="">${vazio}</option>`+tipos.map(t=>`<option ${t===sel?"selected":""}>${esc(t)}</option>`).join("");
+}
+function renderContratantes(){
+  const el=document.getElementById("panel-contratantes");
+  const q=norm(fK.q);
+  const lista=state.contratantes.filter(k=>(!fK.tipo||k.tipo===fK.tipo)&&(!q||norm(k.nome+" "+k.documento).includes(q)))
+    .sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  if(selK&&!kById(selK)) selK=null;
+  if(!selK&&lista.length) selK=lista[0].id;
+  const items=lista.map(k=>{ const r=resumoK(k); return `<div class="citem ${k.id===selK?"sel":""}" onclick="selK='${k.id}';renderContratantes()">
+      <div class="t">${esc(k.nome)}</div>
+      <div class="s"><span>${k.tipo?esc(k.tipo):`<i>sem tipo</i>`}</span><span>${r.cs.length} obra(s)${r.andamento?` · ${r.andamento} em andamento`:""}</span></div>
+      <div class="s"><span class="num">contratado ${brl(r.valor)}</span><span class="num">saldo ${brl(r.saldo)}</span></div></div>`; }).join("");
+  el.innerHTML=`<div class="split">
+    <div class="card"><header class="clist-head"><div class="toolbar" style="width:100%">
+        <input class="inp" style="flex:1" placeholder="Buscar contratante" value="${esc(fK.q)}" oninput="fK.q=this.value;renderContratantes();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+        <button class="btn sm primary" onclick="openContratante()">Novo</button></div>
+        <select class="inp" onchange="fK.tipo=this.value;selK=null;renderContratantes()">${tipoOpts(fK.tipo,"Todos os tipos")}</select>
+      </header>
+      ${(()=>{ const n=state.contratantes.filter(k=>!k.tipo).length; return n?`<div class="alert warn" style="margin:10px 12px 4px;cursor:pointer" onclick="fK.tipo='';fK.q='';selK=(state.contratantes.find(k=>!k.tipo)||{}).id;renderContratantes()">${n} contratante(s) sem tipo — use "Editar" para classificar.</div>`:""; })()}
+      <div class="clist">${items||`<div class="empty">Nenhum contratante${fK.tipo||fK.q?" neste filtro":" cadastrado"}.</div>`}</div></div>
+    <div>${selK?detalheContratante(kById(selK)):`<div class="card"><div class="empty">Cadastre um contratante para começar.<br><button class="btn primary" style="margin-top:10px" onclick="openContratante()">Novo contratante</button></div></div>`}</div></div>`;
+}
+function detalheContratante(k){
+  const r=resumoK(k);
+  const linhas=r.cs.map(c=>({c,r:resumo(c)})).sort((a,b)=>(b.c.data||"").localeCompare(a.c.data||"")).map(({c,r})=>`<tr class="click" onclick="goContrato('${c.id}')">
+      <td><b>${esc(c.empreendimento||"—")}</b><div class="hint">${[c.proposta&&"Proposta "+esc(c.proposta),c.numContrato&&"Contrato "+esc(c.numContrato)].filter(Boolean).join(" · ")}</div></td>
+      <td class="r num">${brl(c.valor)}</td><td class="r num">${brl(r.fat)}</td><td class="r num">${brl(r.rec)}</td><td class="r num">${brl(r.saldo)}</td>
+      <td style="min-width:110px">${progressBar(r)}</td><td><span class="badge ${r.st.cls}">${r.st.t}</span></td></tr>`).join("");
+  return `<div class="card"><header><div><h3 style="font-size:17px">${esc(k.nome)}</h3><div class="hint">${[k.tipo&&esc(k.tipo),k.documento&&esc(k.documento),k.contato&&esc(k.contato)].filter(Boolean).join(" · ")||"&nbsp;"}</div></div>
+      <div class="row-actions"><button class="btn sm" onclick="openContratante('${k.id}')">Editar</button><button class="btn sm primary" onclick="openContrato(null,'${k.id}')">Novo contrato</button></div></header>
+    <div class="body">
+      <div class="strip" style="margin-bottom:${k.obs?"12px":"0"}">
+        <div class="chip"><span class="k">Contratado</span><span class="v">${brl(r.valor)}</span><span class="u">${r.cs.length} obra(s)</span></div>
+        <div class="chip"><span class="k">Faturado</span><span class="v">${brl(r.fat)}</span></div>
+        <div class="chip good"><span class="k">Recebido</span><span class="v">${brl(r.rec)}</span></div>
+        <div class="chip warn"><span class="k">A receber</span><span class="v">${brl(r.aberto)}</span></div>
+        <div class="chip hl"><span class="k">Saldo a faturar</span><span class="v">${brl(r.saldo)}</span></div></div>
+      ${k.obs?`<dl class="kv"><dt>Observações</dt><dd>${esc(k.obs)}</dd></dl>`:""}
+    </div></div>
+    <div class="card"><header><h3>Obras / contratos</h3></header>
+      ${linhas?`<div class="tablewrap"><table><thead><tr><th>Obra</th><th class="r">Contratado</th><th class="r">Faturado</th><th class="r">Recebido</th><th class="r">Saldo</th><th>Andamento</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+        :`<div class="empty">Nenhum contrato para este contratante.</div>`}</div>`;
+}
+function openContratante(id){
+  const k=id?kById(id):{nome:"",tipo:"",documento:"",contato:"",obs:""};
+  openModal(`<header><h3>${id?"Editar contratante":"Novo contratante"}</h3><button class="xbtn" onclick="closeModal()" aria-label="Fechar">×</button></header>
+  <div class="body">
+    <div class="fgrid"><div class="field" style="grid-column:span 2"><label>Nome</label><input id="k_nome" value="${esc(k.nome)}" placeholder="ex.: Construtora X"></div>
+      <div class="field"><label>Tipo</label><select id="k_tipo">${tipoOpts(k.tipo)}</select></div></div>
+    <div class="fgrid"><div class="field"><label>CNPJ / CPF <span class="sub">opcional</span></label><input id="k_doc" value="${esc(k.documento)}"></div>
+      <div class="field"><label>Contato <span class="sub">opcional</span></label><input id="k_cont" value="${esc(k.contato)}" placeholder="nome, e-mail, telefone"></div></div>
+    <div class="field"><label>Observações</label><textarea id="k_obs">${esc(k.obs)}</textarea></div>
+  </div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="delContratante('${id}')">Excluir</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveContratante(${id?`'${id}'`:"null"})">${id?"Salvar":"Cadastrar"}</button></footer>`);
+}
+function saveContratante(id){
+  const nome=$("k_nome").value.trim(); if(!nome){ toast("Informe o nome do contratante"); return; }
+  if(state.contratantes.some(k=>k.id!==id&&norm(k.nome)===norm(nome))){ toast("Já existe um contratante com esse nome"); return; }
+  const dados={nome,tipo:$("k_tipo").value,documento:$("k_doc").value.trim(),contato:$("k_cont").value.trim(),obs:$("k_obs").value.trim()};
+  if(id) Object.assign(kById(id),dados); else { const k={id:uid(),...dados}; state.contratantes.push(k); selK=k.id; }
+  touch(); closeModal(); render(); toast(id?"Contratante atualizado":"Contratante cadastrado");
+}
+function delContratante(id){
+  const n=state.contratos.filter(c=>c.contratanteId===id).length;
+  if(n){ alert(`Este contratante tem ${n} contrato(s). Exclua ou transfira os contratos antes.`); return; }
+  if(!confirm("Excluir este contratante?")) return;
+  state.contratantes=state.contratantes.filter(k=>k.id!==id); selK=null; touch(); closeModal(); render();
+}
+
+/* ================= CONFIGURAÇÕES ================= */
+function listEditor(key,titulo,hint,placeholder){
+  const a=state[key];
+  return `<div class="card"><header><div><h3>${titulo}</h3><p class="hint">${hint}</p></div></header><div class="body">
+    ${a.map((d,i)=>`<div class="custom-row" style="grid-template-columns:1fr auto auto auto">
+      <input class="inp" value="${esc(d)}" onchange="renameItem('${key}',${i},this.value)">
+      <button class="btn sm" ${i===0?"disabled":""} onclick="movItem('${key}',${i},-1)" aria-label="Subir">↑</button>
+      <button class="btn sm" ${i===a.length-1?"disabled":""} onclick="movItem('${key}',${i},1)" aria-label="Descer">↓</button>
+      <button class="btn sm danger" onclick="state.${key}.splice(${i},1);touch();renderConfig()">Remover</button></div>`).join("")}
+    <div class="custom-row" style="grid-template-columns:1fr auto;margin-top:12px">
+      <input class="inp" id="new_${key}" placeholder="${placeholder}" onkeydown="if(event.key==='Enter')addItem('${key}')">
+      <button class="btn primary" onclick="addItem('${key}')">Adicionar</button></div></div></div>`;
+}
+function renameItem(key,i,v){
+  v=v.trim(); if(!v) return renderConfig();
+  const old=state[key][i]; state[key][i]=v;
+  if(key==="tiposContratante") state.contratantes.forEach(k=>{ if(k.tipo===old) k.tipo=v; });
+  touch(); renderConfig();
+}
+function movItem(key,i,d){ const a=state[key]; [a[i],a[i+d]]=[a[i+d],a[i]]; touch(); renderConfig(); }
+function addItem(key){ const v=$("new_"+key).value.trim(); if(!v) return; state[key].push(v); touch(); renderConfig(); }
+function renderConfig(){
+  const el=document.getElementById("panel-config");
+  const pasta= FS.status==="unsupported" ? `<p>Este navegador não permite gravar numa pasta. Use Chrome ou Edge.</p>`
+    : FS.dir ? `<p>Os dados são gravados automaticamente na pasta <b>${esc(FS.dir.name)}</b>, no arquivo <span class="mono">${DATA_FILE}</span>. Uma cópia por dia fica na subpasta <span class="mono">backups</span> (são mantidos os últimos 60 dias).</p>
+        <div class="row-actions" style="justify-content:flex-start">${FS.status==="ask"?`<button class="btn primary" onclick="fsReconnect()">Reconectar pasta</button>`:""}<button class="btn" onclick="fsChoose()">Trocar de pasta</button></div>`
+    : `<p>Nenhuma pasta escolhida — os dados estão só no app.</p><button class="btn primary" onclick="fsChoose()">Escolher pasta de dados</button>`;
+  el.innerHTML=`<div class="grid2" style="align-items:start">
+    <div>
+      <div class="card"><header><h3>Pasta de dados</h3></header><div class="body">${pasta}</div></div>
+      ${listEditor("tiposContratante","Tipos de contratante","Usados para classificar e filtrar contratantes. Renomear aqui atualiza os contratantes que já usam o tipo.","Novo tipo (ex.: Associação de moradores)")}
+      <div class="card"><header><div><h3>Começar do zero</h3><p class="hint">Apaga todos os contratantes, contratos e notas. Antes, o arquivo atual é copiado para a pasta de backups.</p></div>
+        <button class="btn danger" onclick="apagarTudo()">Apagar todos os dados</button></header></div>
+      <p class="hint">Versão do app: ${APP_VERSION}</p>
+    </div>
+    <div>${listEditor("disciplinas","Disciplinas padrão","Aparecem como opções ao criar um contrato. Alterar aqui não muda contratos já cadastrados.","Nova disciplina (ex.: Iluminação pública)")}
+      <button class="btn link" onclick="if(confirm('Restaurar a lista original de disciplinas?')){state.disciplinas=DISC_PADRAO.slice();touch();renderConfig()}">Restaurar lista original de disciplinas</button></div>
+  </div>`;
+}
+async function apagarTudo(){
+  const t=prompt('Isso apaga TODOS os dados do controle. Para confirmar, digite APAGAR');
+  if((t||"").trim().toUpperCase()!=="APAGAR") return;
+  await fsBackupNow("antes-de-apagar");
+  const d=state.disciplinas, tp=state.tiposContratante, fid=state.fileId;
+  state=migrate(blankState()); state.disciplinas=d; state.tiposContratante=tp; state.fileId=fid;
+  selContrato=null; selK=null; touch(); render(); toast("Dados apagados — cópia anterior guardada em backups");
+}
+
+/* ================= RELATÓRIOS ================= */
+const ano0=()=>todayISO().slice(0,4)+"-01-01";
+let fR={tipo:"extrato",contrato:"",de:"",ate:"",ktipo:"",kid:"",dias:30};
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const mesNome=m=>{ if(!m) return "Sem data"; const [y,mm]=m.split("-"); return `${MESES[+mm-1]} de ${y}`; };
+const passaFiltroK=c=>(!fR.ktipo||cliTipo(c)===fR.ktipo)&&(!fR.kid||c.contratanteId===fR.kid);
+const filtroDesc=()=>[fR.ktipo&&"Tipo: "+fR.ktipo,fR.kid&&"Contratante: "+(kById(fR.kid)||{}).nome].filter(Boolean).join(" · ");
+
+function tabela(cols,rows,foot){ /* cols: [{t,r}] ; rows: arrays de células (html) */
+  return `<div class="tablewrap"><table><thead><tr>${cols.map(c=>`<th class="${c.r?"r":""}">${c.t}</th>`).join("")}</tr></thead>
+    <tbody>${rows.length?rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${cols[i].r?"r num":""}">${v}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length}" class="muted" style="text-align:center">Nada a mostrar</td></tr>`}</tbody>
+    ${foot?`<tfoot><tr>${foot.map((v,i)=>`<td class="${cols[i].r?"r num":""}">${v}</td>`).join("")}</tr></tfoot>`:""}</table></div>`;
+}
+/* cada relatório devolve {titulo, sub, html, csv:[[...]]} */
+const REL={
+  extrato(){
+    const c=cById(fR.contrato);
+    if(!c) return {titulo:"Extrato do contrato",sub:"",html:`<div class="empty">Selecione um contrato.</div>`,csv:[]};
+    const r=resumo(c), D=resumoDisc(c), k=kById(c.contratanteId)||{};
+    const ns=state.notas.filter(n=>n.contratoId===c.id&&n.status!=="cancelada").sort((a,b)=>a.data.localeCompare(b.data));
+    const info=[["Contratante",k.nome],["Tipo",k.tipo],["Obra / empreendimento",c.empreendimento],["Proposta Polis",c.proposta],["Nº do contrato",c.numContrato],["Data de assinatura",c.data&&fdate(c.data)],["Condição de pagamento",c.condicao]].filter(x=>x[1]);
+    const csv=[["EXTRATO DO CONTRATO"],...info,[],["Contratado",nf2(c.valor)],["Faturado",nf2(r.fat)],["Recebido",nf2(r.rec)],["A receber",nf2(r.aberto)],["Saldo a faturar",nf2(r.saldo)],[]];
+    let html=`<dl class="kv rep-kv">${info.map(([a,b])=>`<dt>${a}</dt><dd>${esc(b)}</dd>`).join("")}</dl>
+      <div class="rep-sum">${[["Contratado",c.valor],["Faturado",r.fat],["Recebido",r.rec],["A receber",r.aberto],["Saldo a faturar",r.saldo]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}</div>`;
+    if(c.disciplinas.length){
+      const rows=D.rows.map(x=>[esc(x.d.nome),x.contratado?brl(x.contratado):"—",x.faturado?brl(x.faturado):"—",x.contratado?brl(x.saldo):"—"]);
+      if(D.naoRateado>EPS) rows.push(["<i>Faturado sem rateio por disciplina</i>","",brl(D.naoRateado),""]);
+      html+=`<h4>Disciplinas</h4>`+tabela([{t:"Disciplina"},{t:"Contratado",r:1},{t:"Faturado",r:1},{t:"Saldo",r:1}],rows);
+      csv.push(["Disciplina","Contratado","Faturado","Saldo"],...D.rows.map(x=>[x.d.nome,nf2(x.contratado),nf2(x.faturado),nf2(x.saldo)]));
+      if(D.naoRateado>EPS) csv.push(["Sem rateio","",nf2(D.naoRateado),""]);
+      csv.push([]);
+    }
+    html+=`<h4>Notas fiscais</h4>`+tabela([{t:"NF"},{t:"Emissão"},{t:"Descrição"},{t:"Valor",r:1},{t:"% contrato",r:1},{t:"Situação"},{t:"Pagamento"}],
+      ns.map(n=>[esc(n.numero),fdate(n.data),esc(n.descricao),brl(n.valor),c.valor?pctFmt(n.valor/c.valor*100)+"%":"",n.status==="paga"?"Paga":"Aguardando",n.status==="paga"?fdate(n.dataPagamento):""]),
+      ["Total","","",brl(r.fat),c.valor?pctFmt(r.fat/c.valor*100)+"%":"","",""]);
+    csv.push(["NF","Emissão","Descrição","Valor","Situação","Pagamento"],...ns.map(n=>[n.numero,fdate(n.data),n.descricao,nf2(n.valor),n.status==="paga"?"Paga":"Aguardando",n.status==="paga"?fdate(n.dataPagamento):""]));
+    return {titulo:"Extrato do contrato",sub:`${esc(k.nome||"")}${c.empreendimento?" – "+esc(c.empreendimento):""}`,html,csv};
+  },
+  periodo(){
+    const de=fR.de||ano0(), ate=fR.ate||todayISO();
+    const ok=n=>{ const c=cById(n.contratoId); return c&&passaFiltroK(c)&&n.status!=="cancelada"; };
+    const emit=state.notas.filter(n=>ok(n)&&n.data>=de&&n.data<=ate);
+    const pagas=state.notas.filter(n=>ok(n)&&n.status==="paga"&&n.dataPagamento>=de&&n.dataPagamento<=ate);
+    const meses=[]; { let [y,m]=de.split("-").map(Number); const [y2,m2]=ate.split("-").map(Number); while(y<y2||(y===y2&&m<=m2)){ meses.push(`${y}-${String(m).padStart(2,"0")}`); m++; if(m>12){m=1;y++;} } }
+    const porMes=meses.map(m=>[m,sum(emit.filter(n=>n.data.startsWith(m)),n=>n.valor),sum(pagas.filter(n=>n.dataPagamento.startsWith(m)),n=>n.valor)]);
+    const tF=sum(emit,n=>n.valor), tR=sum(pagas,n=>n.valor);
+    const ks={}; emit.forEach(n=>{ const c=cById(n.contratoId), id=c.contratanteId; (ks[id]=ks[id]||{f:0,r:0}).f+=n.valor; });
+    pagas.forEach(n=>{ const c=cById(n.contratoId), id=c.contratanteId; (ks[id]=ks[id]||{f:0,r:0}).r+=n.valor; });
+    const porK=Object.entries(ks).map(([id,v])=>({k:kById(id)||{nome:"?"},...v})).sort((a,b)=>b.f-a.f);
+    const ds={}; let semRateio=0;
+    emit.forEach(n=>{ const c=cById(n.contratoId); let rat=0; c.disciplinas.forEach(d=>{ const v=(n.rateio||{})[d.id]||0; if(v){ ds[d.nome]=(ds[d.nome]||0)+v; rat+=v; } }); semRateio+=n.valor-rat; });
+    const porD=Object.entries(ds).sort((a,b)=>b[1]-a[1]);
+    let html=`<div class="rep-sum">${[["Faturado (NFs emitidas)",tF],["Recebido (pagamentos)",tR]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}<div><span>Notas emitidas</span><b class="num">${emit.length}</b></div></div>
+      <h4>Por mês</h4>`+tabela([{t:"Mês"},{t:"Faturado",r:1},{t:"Recebido",r:1}],porMes.map(([m,f,r])=>[mesNome(m),f?brl(f):"—",r?brl(r):"—"]),["Total",brl(tF),brl(tR)])+
+      `<h4>Por contratante</h4>`+tabela([{t:"Contratante"},{t:"Tipo"},{t:"Faturado",r:1},{t:"Recebido",r:1}],porK.map(x=>[esc(x.k.nome),esc(x.k.tipo||""),brl(x.f),brl(x.r)]),["Total","",brl(tF),brl(tR)])+
+      `<h4>Faturado por disciplina</h4>`+tabela([{t:"Disciplina"},{t:"Faturado",r:1},{t:"% do período",r:1}],
+        [...porD.map(([d,v])=>[esc(d),brl(v),tF?pctFmt(v/tF*100)+"%":""]),...(semRateio>EPS?[["<i>Sem rateio por disciplina</i>",brl(semRateio),tF?pctFmt(semRateio/tF*100)+"%":""]]:[])],["Total",brl(tF),""])+
+      `<h4>Notas emitidas no período</h4>`+tabela([{t:"NF"},{t:"Emissão"},{t:"Contratante"},{t:"Obra"},{t:"Valor",r:1},{t:"Situação"}],
+        emit.sort((a,b)=>a.data.localeCompare(b.data)).map(n=>{ const c=cById(n.contratoId); return [esc(n.numero),fdate(n.data),esc(cliNome(c)),esc(c.empreendimento),brl(n.valor),n.status==="paga"?"Paga em "+fdate(n.dataPagamento):"Aguardando"]; }),["","","","",brl(tF),""]);
+    const csv=[["FATURAMENTO POR PERÍODO",`${fdate(de)} a ${fdate(ate)}`,filtroDesc()],[],["Mês","Faturado","Recebido"],...porMes.map(([m,f,r])=>[mesNome(m),nf2(f),nf2(r)]),["Total",nf2(tF),nf2(tR)],[],
+      ["Contratante","Tipo","Faturado","Recebido"],...porK.map(x=>[x.k.nome,x.k.tipo,nf2(x.f),nf2(x.r)]),[],
+      ["Disciplina","Faturado"],...porD.map(([d,v])=>[d,nf2(v)]),...(semRateio>EPS?[["Sem rateio",nf2(semRateio)]]:[]),[],
+      ["NF","Emissão","Contratante","Obra","Valor","Situação","Pagamento"],...emit.map(n=>{ const c=cById(n.contratoId); return [n.numero,fdate(n.data),cliNome(c),c.empreendimento,nf2(n.valor),n.status==="paga"?"Paga":"Aguardando",n.status==="paga"?fdate(n.dataPagamento):""]; })];
+    return {titulo:"Faturamento por período",sub:`${fdate(de)} a ${fdate(ate)}${filtroDesc()?" · "+esc(filtroDesc()):""}`,html,csv};
+  },
+  previsao(){
+    const hoje=todayISO();
+    const cs=state.contratos.filter(c=>!c.encerrado&&passaFiltroK(c));
+    const aguard=state.notas.filter(n=>{ const c=cById(n.contratoId); return n.status==="emitida"&&c&&passaFiltroK(c); }).sort((a,b)=>a.data.localeCompare(b.data));
+    const cob=cs.map(c=>({c,r:resumo(c)})).filter(x=>x.r.st.k==="and"&&temProx(x.c.prox));
+    const grupos={}; cob.forEach(x=>{ const m=x.c.prox.data&&x.c.prox.data<hoje?"atrasadas":(x.c.prox.data||"").slice(0,7); (grupos[m]=grupos[m]||[]).push(x); });
+    const chaves=Object.keys(grupos).sort((a,b)=>a==="atrasadas"?-1:b==="atrasadas"?1:a===""?1:b===""?-1:a.localeCompare(b));
+    const tA=sum(aguard,n=>n.valor), tP=sum(cob,x=>x.c.prox.valor||0);
+    const semValor=cob.filter(x=>!x.c.prox.valor).length;
+    const saldoTot=sum(cs.map(c=>resumo(c)).filter(r=>r.st.k==="and"),r=>Math.max(0,r.saldo));
+    const semPrev=Math.max(0,saldoTot-tP);
+    const nomeG=g=>g==="atrasadas"?"Cobranças com data vencida":mesNome(g);
+    let html=`<div class="rep-sum">${[["Notas emitidas a receber",tA],["Cobranças previstas",tP],["Saldo a faturar sem previsão",semPrev]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}</div>
+      <p class="hint">Cada contrato tem uma "próxima cobrança". O saldo restante de cada contrato, além dela, aparece como "sem previsão".${semValor?` ${semValor} cobrança(s) prevista(s) estão sem valor definido.`:""}</p>
+      <h4>Resumo por mês</h4>`+tabela([{t:"Mês"},{t:"Cobranças",r:1},{t:"Valor previsto",r:1}],
+        [["Notas já emitidas, aguardando pagamento",aguard.length,brl(tA)],...chaves.map(g=>[nomeG(g),grupos[g].length,brl(sum(grupos[g],x=>x.c.prox.valor||0))])],["Total","",brl(tA+tP)])+
+      `<h4>Cobranças previstas</h4>`+tabela([{t:"Data"},{t:"Contratante"},{t:"Obra"},{t:"Marco"},{t:"Valor previsto",r:1},{t:"Saldo do contrato",r:1}],
+        chaves.flatMap(g=>grupos[g]).map(({c,r})=>[(c.prox.data&&c.prox.data<hoje?`<span class="badge b-red">${fdate(c.prox.data)}</span>`:fdate(c.prox.data)),esc(cliNome(c)),esc(c.empreendimento),esc(c.prox.descricao),c.prox.valor?brl(c.prox.valor)+pctOf(c.prox.valor,c):"—",brl(r.saldo)]))+
+      `<h4>Notas aguardando pagamento</h4>`+tabela([{t:"NF"},{t:"Emissão"},{t:"Dias"},{t:"Contratante"},{t:"Obra"},{t:"Valor",r:1}],
+        aguard.map(n=>{ const c=cById(n.contratoId); return [esc(n.numero),fdate(n.data),daysBetween(n.data,hoje),esc(cliNome(c)),esc(c.empreendimento),brl(n.valor)]; }),["","","","","",brl(tA)]);
+    const csv=[["PREVISÃO DE RECEBIMENTOS",fdate(hoje),filtroDesc()],[],["Notas emitidas a receber",nf2(tA)],["Cobranças previstas",nf2(tP)],["Saldo sem previsão",nf2(semPrev)],[],
+      ["Mês","Cobranças","Valor previsto"],["Notas aguardando pagamento",aguard.length,nf2(tA)],...chaves.map(g=>[nomeG(g),grupos[g].length,nf2(sum(grupos[g],x=>x.c.prox.valor||0))]),[],
+      ["Data","Contratante","Obra","Marco","Valor previsto","Saldo do contrato"],...chaves.flatMap(g=>grupos[g]).map(({c,r})=>[fdate(c.prox.data),cliNome(c),c.empreendimento,c.prox.descricao,nf2(c.prox.valor),nf2(r.saldo)])];
+    return {titulo:"Previsão de recebimentos",sub:`Posição em ${fdate(hoje)}${filtroDesc()?" · "+esc(filtroDesc()):""}`,html,csv};
+  },
+  pendencias(){
+    const hoje=todayISO(), N=+fR.dias||0;
+    const atras=state.notas.filter(n=>{ const c=cById(n.contratoId); return n.status==="emitida"&&c&&passaFiltroK(c)&&daysBetween(n.data,hoje)>N; }).sort((a,b)=>a.data.localeCompare(b.data));
+    const cs=state.contratos.filter(c=>passaFiltroK(c)).map(c=>({c,r:resumo(c)}));
+    const venc=cs.filter(x=>x.r.st.k==="and"&&x.c.prox.data&&x.c.prox.data<hoje).sort((a,b)=>a.c.prox.data.localeCompare(b.c.prox.data));
+    const semP=cs.filter(x=>x.r.st.k==="and"&&!temProx(x.c.prox));
+    const exced=cs.filter(x=>!x.c.encerrado&&x.r.saldo<-EPS);
+    const sec=(t,n)=>`<h4>${t} <span class="badge ${n?"b-red":"b-ok"}">${n}</span></h4>`;
+    let html=`<div class="rep-sum">${[["Notas atrasadas",atras.length,brl(sum(atras,n=>n.valor))],["Cobranças vencidas",venc.length,""],["Contratos sem previsão",semP.length,brl(sum(semP,x=>x.r.saldo))]].map(([a,n,v])=>`<div><span>${a}</span><b class="num">${n}</b>${v?`<small class="num">${v}</small>`:""}</div>`).join("")}</div>`+
+      sec(`Notas aguardando pagamento há mais de ${N} dias`,atras.length)+tabela([{t:"NF"},{t:"Emissão"},{t:"Dias",r:1},{t:"Contratante"},{t:"Obra"},{t:"Valor",r:1}],
+        atras.map(n=>{ const c=cById(n.contratoId); return [esc(n.numero),fdate(n.data),daysBetween(n.data,hoje),esc(cliNome(c)),esc(c.empreendimento),brl(n.valor)]; }),atras.length?["","","","","",brl(sum(atras,n=>n.valor))]:null)+
+      sec("Próximas cobranças com data vencida",venc.length)+tabela([{t:"Data prevista"},{t:"Dias",r:1},{t:"Contratante"},{t:"Obra"},{t:"Marco"},{t:"Valor previsto",r:1}],
+        venc.map(({c})=>[fdate(c.prox.data),daysBetween(c.prox.data,hoje),esc(cliNome(c)),esc(c.empreendimento),esc(c.prox.descricao),c.prox.valor?brl(c.prox.valor):"—"]))+
+      sec("Contratos com saldo e sem próxima cobrança",semP.length)+tabela([{t:"Contratante"},{t:"Obra"},{t:"Proposta"},{t:"Saldo a faturar",r:1}],
+        semP.map(({c,r})=>[esc(cliNome(c)),esc(c.empreendimento),esc(c.proposta),brl(r.saldo)]))+
+      (exced.length?sec("Notas acima do valor do contrato (verificar aditivo)",exced.length)+tabela([{t:"Contratante"},{t:"Obra"},{t:"Contratado",r:1},{t:"Faturado",r:1},{t:"Excedente",r:1}],
+        exced.map(({c,r})=>[esc(cliNome(c)),esc(c.empreendimento),brl(c.valor),brl(r.fat),brl(-r.saldo)])):"");
+    const csv=[["PENDÊNCIAS",fdate(hoje),filtroDesc()],[],[`Notas aguardando há mais de ${N} dias`],["NF","Emissão","Dias","Contratante","Obra","Valor"],...atras.map(n=>{ const c=cById(n.contratoId); return [n.numero,fdate(n.data),daysBetween(n.data,hoje),cliNome(c),c.empreendimento,nf2(n.valor)]; }),[],
+      ["Cobranças com data vencida"],["Data","Contratante","Obra","Marco","Valor previsto"],...venc.map(({c})=>[fdate(c.prox.data),cliNome(c),c.empreendimento,c.prox.descricao,nf2(c.prox.valor)]),[],
+      ["Contratos sem próxima cobrança"],["Contratante","Obra","Proposta","Saldo"],...semP.map(({c,r})=>[cliNome(c),c.empreendimento,c.proposta,nf2(r.saldo)])];
+    return {titulo:"Pendências",sub:`Posição em ${fdate(hoje)}${filtroDesc()?" · "+esc(filtroDesc()):""}`,html,csv};
+  }
+};
+let ultimoRel=null;
+function renderRelatorios(){
+  const el=document.getElementById("panel-relatorios");
+  if(fR.tipo==="extrato"&&!cById(fR.contrato)&&state.contratos.length) fR.contrato=(state.contratos.find(ativo)||state.contratos[0]).id;
+  const kOpts=`<option value="">Todos os contratantes</option>`+state.contratantes.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(k=>`<option value="${k.id}" ${fR.kid===k.id?"selected":""}>${esc(k.nome)}</option>`).join("");
+  const filtrosK=`<select class="inp" onchange="fR.ktipo=this.value;renderRelatorios()">${tipoOpts(fR.ktipo,"Todos os tipos")}</select><select class="inp" onchange="fR.kid=this.value;renderRelatorios()">${kOpts}</select>`;
+  const filtros={
+    extrato:`<select class="inp" style="min-width:320px" onchange="fR.contrato=this.value;renderRelatorios()">${state.contratantes.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(k=>{ const cs=state.contratos.filter(c=>c.contratanteId===k.id); return cs.length?`<optgroup label="${esc(k.nome)}">${cs.map(c=>`<option value="${c.id}" ${c.id===fR.contrato?"selected":""}>${esc(c.empreendimento||"(sem obra)")}${c.proposta?" · "+esc(c.proposta):""}</option>`).join("")}</optgroup>`:""; }).join("")}</select>`,
+    periodo:`<label class="hint">de</label><input type="date" class="inp" value="${fR.de||ano0()}" onchange="fR.de=this.value;renderRelatorios()"><label class="hint">até</label><input type="date" class="inp" value="${fR.ate||todayISO()}" onchange="fR.ate=this.value;renderRelatorios()">
+      <span class="seg">${[["Este mês",todayISO().slice(0,8)+"01",todayISO()],["Este ano",ano0(),todayISO()],["Últimos 12 meses",(()=>{const d=new Date();d.setFullYear(d.getFullYear()-1);d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);})(),todayISO()]].map(([t,a,b])=>`<button onclick="fR.de='${a}';fR.ate='${b}';renderRelatorios()">${t}</button>`).join("")}</span>`+filtrosK,
+    previsao:filtrosK,
+    pendencias:`<label class="hint">notas aguardando há mais de</label><input type="number" class="inp" style="width:80px;min-width:0" value="${fR.dias}" min="0" onchange="fR.dias=this.value;renderRelatorios()"><label class="hint">dias</label>`+filtrosK
+  };
+  const r=REL[fR.tipo](); ultimoRel=r;
+  el.innerHTML=`<div class="card no-print"><header style="flex-direction:column;align-items:stretch">
+      <div class="seg rep-tabs">${[["extrato","Extrato do contrato"],["periodo","Faturamento por período"],["previsao","Previsão de recebimentos"],["pendencias","Pendências"]].map(([k,t])=>`<button class="${fR.tipo===k?"on":""}" onclick="fR.tipo='${k}';renderRelatorios()">${t}</button>`).join("")}</div>
+      <div class="toolbar">${filtros[fR.tipo]}<div class="row-actions" style="margin-left:auto"><button class="btn sm" onclick="relCsv()">Excel (.csv)</button><button class="btn sm primary" onclick="relPrint()">Imprimir / PDF</button></div></div></header></div>
+    <div class="card rep" id="repOut"><div class="body">
+      <div class="rep-head"><img src="${document.querySelector('.brandlogo').src}" alt="Polis"><div><h2>${r.titulo}</h2><div class="hint">${r.sub}</div></div><div class="hint rep-gen">Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</div></div>
+      ${r.html}</div></div>`;
+}
+function relPrint(){ document.body.classList.add("printing-report"); window.print(); setTimeout(()=>document.body.classList.remove("printing-report"),500); }
+function relCsv(){ if(!ultimoRel) return; downloadCsv(`${ultimoRel.titulo.toLowerCase().replace(/[^a-z0-9à-ú]+/gi,"-")}_${todayISO()}.csv`,ultimoRel.csv); }
+function downloadCsv(nome,rows){
+  const csv="\ufeff"+rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  download(nome,csv,"text/csv"); toast("Arquivo para Excel gerado");
+}
+
+/* ================= MODAL ================= */
+const modalBg=document.getElementById("modalBg"), modal=document.getElementById("modal");
+function openModal(html){ modal.innerHTML=html; modalBg.classList.add("show"); const f=modal.querySelector("input:not([type=checkbox]),select"); if(f) setTimeout(()=>f.focus(),30); }
+function closeModal(){ modalBg.classList.remove("show"); modal.innerHTML=""; }
+modalBg.addEventListener("mousedown",e=>{ if(e.target===modalBg) closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modalBg.classList.contains("show")) closeModal(); });
+const mv=v=>v?nf2(v):"";
+const $=id=>document.getElementById(id);
+const pctFmt=p=>p.toLocaleString("pt-BR",{maximumFractionDigits:2});
+/* campo de valor com % do contrato ao lado; basefn devolve o valor do contrato */
+function pctField(id,label,valor,basefn,after=""){
+  return `<div class="field"><label>${label}</label><div class="pctpair">
+    <div class="pctin"><input id="${id}_pct" class="money" inputmode="decimal" placeholder="0" oninput="pctToVal('${id}','${basefn}')"><span>%</span></div>
+    <input id="${id}" class="money" inputmode="decimal" value="${mv(valor)}" placeholder="R$ 0,00" oninput="valToPct('${id}','${basefn}');${after}"></div></div>`;
+}
+function pctToVal(id,fn){
+  const b=window[fn](), p=parseMoney($(id+"_pct").value);
+  $(id).value= (b&&p)? nf2(Math.round(b*p)/100) : "";
+  $(id).dispatchEvent(new Event("input"));
+}
+function valToPct(id,fn){
+  const pi=$(id+"_pct"); if(!pi||document.activeElement===pi) return;
+  const b=window[fn](), v=parseMoney($(id).value);
+  pi.value=(b&&v)? pctFmt(v/b*100) : "";
+}
+window.baseContrato=()=>parseMoney(($("f_val")||{}).value);
+let proxEditId=null; window.baseProx=()=>(cById(proxEditId)||{}).valor||0;
+window.baseNota=()=>(cById(nDraft&&nDraft.n.contratoId)||{}).valor||0;
+const pctOf=(v,c)=>c&&c.valor&&v?` (${pctFmt(v/c.valor*100)}%)`:"";
+
+/* ---- formulário de contrato ---- */
+let cDraft=null;
+function kOptions(sel){
+  return state.contratantes.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"))
+    .map(k=>`<option value="${k.id}" ${k.id===sel?"selected":""}>${esc(k.nome)}${k.tipo?" · "+esc(k.tipo):""}</option>`).join("");
+}
+function discInputs(valor){ /* % do total do contrato + valor em R$ */
+  return `<div class="pctin"><input class="inp money dpct" inputmode="decimal" placeholder="0" oninput="dPct(this)"><span>%</span></div>
+    <input class="inp money dval" inputmode="decimal" placeholder="R$ (opcional)" value="${mv(valor)}" oninput="dVal(this)">`;
+}
+function openContrato(id,kidPreset){
+  const c=id?clone(cById(id)):{id:uid(),contratanteId:kidPreset||"",empreendimento:"",proposta:"",numContrato:"",data:todayISO(),valor:0,disciplinas:[],condicao:"",prox:{data:"",descricao:"",valor:0},obs:"",encerrado:false};
+  cDraft={c,isNew:!id};
+  const byName=Object.fromEntries(c.disciplinas.map(d=>[d.nome,d]));
+  const padrao=state.disciplinas.map((nome,i)=>{ const d=byName[nome]; return `<div class="disc-row ${d?"on":""}">
+      <input type="checkbox" id="dc_${i}" data-nome="${esc(nome)}" data-id="${d?d.id:""}" ${d?"checked":""} onchange="discToggle(this)">
+      <label for="dc_${i}">${esc(nome)}</label>${discInputs(d?d.valor:0)}</div>`; }).join("");
+  const custom=c.disciplinas.filter(d=>!state.disciplinas.includes(d.nome));
+  openModal(`<header><h3>${id?"Editar contrato":"Novo contrato"}</h3><button class="xbtn" onclick="closeModal()" aria-label="Fechar">×</button></header>
+  <div class="body">
+    <div class="fgrid">
+      <div class="field"><label>Contratante</label><select id="f_k" onchange="$('novoK').style.display=this.value==='__novo'?'':'none';if(this.value==='__novo')$('nk_nome').focus()">
+        <option value="">Selecione…</option>${kOptions(c.contratanteId)}<option value="__novo">+ Cadastrar novo contratante…</option></select></div>
+      <div class="field"><label>Obra / empreendimento</label><input id="f_emp" value="${esc(c.empreendimento)}" placeholder="ex.: Residencial Y"></div>
+    </div>
+    <div class="fgrid novok" id="novoK" style="display:none">
+      <div class="field"><label>Nome do novo contratante</label><input id="nk_nome" placeholder="ex.: Construtora X"></div>
+      <div class="field"><label>Tipo</label><select id="nk_tipo">${tipoOpts("")}</select></div>
+    </div>
+    <div class="fgrid">
+      <div class="field"><label>Nº da proposta Polis</label><input id="f_prop" value="${esc(c.proposta)}" placeholder="obrigatório"></div>
+      <div class="field"><label>Nº do contrato <span class="sub">se houver</span></label><input id="f_ncont" value="${esc(c.numContrato)}"></div>
+      <div class="field"><label>Data de assinatura</label><input id="f_data" type="date" value="${c.data}"></div>
+      <div class="field"><label>Valor total do contrato (R$)</label><input id="f_val" class="money" inputmode="decimal" value="${mv(c.valor)}" placeholder="0,00" oninput="refreshDPcts();sumCheck();valToPct('f_pval','baseContrato')"></div>
+    </div>
+    <fieldset><legend>Disciplinas <span class="muted" style="font-weight:400">— valor opcional, em % do contrato ou R$</span></legend>
+      <div class="disc-grid">${padrao}</div>
+      <div id="customRows">${custom.map(d=>customRow(d)).join("")}</div>
+      <button class="btn sm" onclick="$('customRows').insertAdjacentHTML('beforeend',customRow({}));sumCheck()">+ Outra disciplina</button>
+      <div id="sumcheck" class="sumcheck"></div>
+    </fieldset>
+    <div class="field"><label>Condição de pagamento prevista no contrato <span class="sub">referência — não precisa manter atualizada</span></label>
+      <textarea id="f_cond" placeholder="ex.: 30% na assinatura, 40% no protocolo na Prefeitura, 30% na aprovação">${esc(c.condicao)}</textarea></div>
+    <fieldset><legend>Próxima cobrança</legend>
+      <div class="fgrid">
+        <div class="field"><label>Data prevista</label><input id="f_pd" type="date" value="${c.prox.data||""}"></div>
+        <div class="field"><label>Marco / descrição</label><input id="f_pdesc" value="${esc(c.prox.descricao||"")}" placeholder="ex.: 1ª parcela – assinatura"></div>
+        ${pctField("f_pval",'Valor previsto <span class="sub">% do contrato ou R$</span>',c.prox.valor,"baseContrato")}
+      </div></fieldset>
+    <div class="field"><label>Observações</label><textarea id="f_obs">${esc(c.obs)}</textarea></div>
+    ${id?`<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="f_enc" ${c.encerrado?"checked":""}> Encerrar contrato (sai do painel mesmo com saldo — ex.: distrato ou saldo não será cobrado)</label>`:""}
+  </div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="delContrato('${id}')">Excluir contrato</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveContrato()">${id?"Salvar alterações":"Criar contrato"}</button></footer>`);
+  modal.querySelectorAll(".disc-row").forEach(r=>{ const on=r.querySelector("input[type=checkbox]").checked; r.querySelectorAll(".dpct,.dval").forEach(i=>i.disabled=!on); });
+  refreshDPcts(); sumCheck(); valToPct("f_pval","baseContrato");
+  if(!c.contratanteId) setTimeout(()=>$("f_k").focus(),40);
+}
+function customRow(d){ return `<div class="custom-row disc-custom" data-id="${d.id||""}"><input class="inp cname" placeholder="Nome da disciplina (outros)" value="${esc(d.nome||"")}">
+  ${discInputs(d.valor)}<button class="btn sm danger" onclick="this.parentNode.remove();sumCheck()">Remover</button></div>`; }
+function discToggle(cb){
+  const row=cb.parentNode; row.classList.toggle("on",cb.checked);
+  row.querySelectorAll(".dpct,.dval").forEach(i=>{ i.disabled=!cb.checked; if(!cb.checked) i.value=""; });
+  sumCheck();
+}
+function dPct(el){
+  const row=el.closest(".disc-row,.custom-row"), b=parseMoney($("f_val").value), p=parseMoney(el.value);
+  row.querySelector(".dval").value=(b&&p)?nf2(Math.round(b*p)/100):""; sumCheck();
+}
+function dVal(el){
+  const row=el.closest(".disc-row,.custom-row"), pi=row.querySelector(".dpct"), b=parseMoney($("f_val").value), v=parseMoney(el.value);
+  pi.value=(b&&v)?pctFmt(v/b*100):""; sumCheck();
+}
+function refreshDPcts(){
+  const b=parseMoney(($("f_val")||{}).value);
+  modal.querySelectorAll(".dval").forEach(v=>{ const pi=v.closest(".disc-row,.custom-row").querySelector(".dpct"); if(document.activeElement===pi) return; const x=parseMoney(v.value); pi.value=(b&&x)?pctFmt(x/b*100):""; });
+}
+function readDiscs(){
+  const out=[];
+  modal.querySelectorAll(".disc-row input[type=checkbox]:checked").forEach(cb=>out.push({id:cb.dataset.id||uid(),nome:cb.dataset.nome,valor:parseMoney(cb.parentNode.querySelector(".dval").value)}));
+  modal.querySelectorAll("#customRows .custom-row").forEach(r=>{ const n=r.querySelector(".cname").value.trim(); if(n) out.push({id:r.dataset.id||uid(),nome:n,valor:parseMoney(r.querySelector(".dval").value)}); });
+  return out;
+}
+function sumCheck(){
+  const el=$("sumcheck"); if(!el) return;
+  const ds=readDiscs(), tot=parseMoney($("f_val").value), s=sum(ds,d=>d.valor);
+  if(!ds.length){ el.className="sumcheck"; el.textContent=""; return; }
+  if(!s){ el.className="sumcheck alert info"; el.textContent=`${ds.length} disciplina(s) marcada(s), sem valor individual.`; return; }
+  const diff=tot-s, pc=tot?` (${pctFmt(s/tot*100)}%)`:"";
+  if(Math.abs(diff)<=EPS){ el.className="sumcheck alert ok"; el.textContent=`Soma das disciplinas: ${brl(s)}${pc} — confere com o valor total.`; }
+  else { el.className="sumcheck alert warn"; el.textContent=`Soma das disciplinas: ${brl(s)}${pc} · valor total: ${brl(tot)} · ${diff>0?"faltam":"excede em"} ${brl(Math.abs(diff))}${tot?` (${pctFmt(Math.abs(diff)/tot*100)}%)`:""}.`; }
+}
+function saveContrato(){
+  const c=cDraft.c;
+  let kid=$("f_k").value;
+  if(kid==="__novo"){
+    const nome=$("nk_nome").value.trim();
+    if(!nome){ toast("Informe o nome do novo contratante"); $("nk_nome").focus(); return; }
+    const ex=state.contratantes.find(k=>norm(k.nome)===norm(nome));
+    if(ex){ kid=ex.id; toast(`"${ex.nome}" já estava cadastrado — contrato vinculado a ele`); }
+    else { const k={id:uid(),nome,tipo:$("nk_tipo").value,documento:"",contato:"",obs:""}; state.contratantes.push(k); kid=k.id; }
+  }
+  if(!kid){ toast("Selecione o contratante"); $("f_k").focus(); return; }
+  c.contratanteId=kid;
+  c.empreendimento=$("f_emp").value.trim();
+  c.proposta=$("f_prop").value.trim();
+  if(!c.proposta){ toast("Informe o nº da proposta Polis"); $("f_prop").focus(); return; }
+  c.numContrato=$("f_ncont").value.trim();
+  c.data=$("f_data").value;
+  c.valor=parseMoney($("f_val").value);
+  if(!(c.valor>0)){ toast("Informe o valor total do contrato"); return; }
+  const novas=readDiscs();
+  const removidas=c.disciplinas.filter(d=>!novas.some(n=>n.id===d.id));
+  const usadas=removidas.filter(d=>state.notas.some(n=>n.contratoId===c.id&&(n.rateio||{})[d.id]));
+  if(usadas.length && !confirm(`As disciplinas ${usadas.map(d=>d.nome).join(", ")} têm valores rateados em notas. Se removê-las, esses valores passam a contar como "sem rateio". Continuar?`)) return;
+  c.disciplinas=novas;
+  c.condicao=$("f_cond").value.trim();
+  c.prox={data:$("f_pd").value,descricao:$("f_pdesc").value.trim(),valor:parseMoney($("f_pval").value)};
+  c.obs=$("f_obs").value.trim();
+  const enc=$("f_enc"); if(enc) c.encerrado=enc.checked;
+  if(cDraft.isNew) state.contratos.push(c); else state.contratos[state.contratos.findIndex(x=>x.id===c.id)]=c;
+  state.notas.forEach(n=>{ if(n.contratoId===c.id&&n.rateio) Object.keys(n.rateio).forEach(k=>{ if(!c.disciplinas.some(d=>d.id===k)) delete n.rateio[k]; }); });
+  touch(); closeModal(); selContrato=c.id;
+  if(cDraft.isNew){ fC.st="todos"; showTab("contratos"); toast("Contrato criado"); } else { render(); toast("Contrato atualizado"); }
+}
+function delContrato(id){
+  const n=state.notas.filter(x=>x.contratoId===id).length;
+  if(!confirm(`Excluir este contrato${n?` e as ${n} nota(s) vinculadas`:""}? Isso não pode ser desfeito.`)) return;
+  state.contratos=state.contratos.filter(c=>c.id!==id); state.notas=state.notas.filter(x=>x.contratoId!==id);
+  selContrato=null; touch(); closeModal(); render(); toast("Contrato excluído");
+}
+function editProx(id){
+  const c=cById(id); proxEditId=id;
+  openModal(`<header><h3>Próxima cobrança · ${esc(cNome(c))}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><div class="fgrid">
+    <div class="field"><label>Data prevista</label><input id="p_d" type="date" value="${c.prox.data||""}"></div>
+    <div class="field"><label>Marco / descrição</label><input id="p_desc" value="${esc(c.prox.descricao||"")}"></div>
+    ${pctField("p_val",'Valor previsto <span class="sub">% do contrato ou R$</span>',c.prox.valor,"baseProx")}</div>
+    ${c.condicao?`<div class="alert info"><b>Condição do contrato:</b> ${esc(c.condicao)}</div>`:""}</div>
+  <footer><button class="btn" style="margin-right:auto" onclick="document.getElementById('p_d').value='';document.getElementById('p_desc').value='';document.getElementById('p_val').value='';document.getElementById('p_val_pct').value=''">Limpar</button>
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveProx('${id}')">Salvar previsão</button></footer>`);
+  valToPct("p_val","baseProx");
+}
+function saveProx(id){ const c=cById(id); c.prox={data:document.getElementById("p_d").value,descricao:document.getElementById("p_desc").value.trim(),valor:parseMoney(document.getElementById("p_val").value)}; touch(); closeModal(); render(); toast("Previsão atualizada"); }
+
+/* ---- formulário de nota fiscal ---- */
+let nDraft=null;
+function openNota({contratoId,notaId}){
+  const n=notaId?clone(state.notas.find(x=>x.id===notaId)):{id:uid(),contratoId:contratoId||"",numero:"",data:todayISO(),valor:0,descricao:"",status:"emitida",dataPagamento:"",rateio:{},obs:""};
+  if(!notaId && !n.contratoId){ const at=state.contratos.filter(ativo); if(at.length===1) n.contratoId=at[0].id; }
+  nDraft={n,isNew:!notaId};
+  const opts=state.contratos.filter(c=>!c.encerrado||c.id===n.contratoId)
+    .sort((a,b)=>cNome(a).localeCompare(cNome(b),"pt-BR"))
+    .map(c=>`<option value="${c.id}" ${c.id===n.contratoId?"selected":""}>${esc(cNome(c))}${c.proposta?" ("+esc(c.proposta)+")":""} — saldo ${brl(resumo(c).saldo)}</option>`).join("");
+  if(!state.contratos.length){ toast("Cadastre um contrato antes de emitir notas"); openContrato(); return; }
+  const c0=cById(n.contratoId);
+  openModal(`<header><h3>${notaId?"Editar nota fiscal":"Emitir nota fiscal"}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body">
+    <div class="field"><label>Contrato</label><select id="n_c" onchange="nDraft.n.contratoId=this.value;nDraft.n.rateio={};nRefresh();valToPct('n_val','baseNota')"><option value="">Selecione…</option>${opts}</select></div>
+    <div class="fgrid">
+      <div class="field"><label>Nº da nota</label><input id="n_num" value="${esc(n.numero)}"></div>
+      <div class="field"><label>Data de emissão</label><input id="n_data" type="date" value="${n.data}"></div>
+      ${pctField("n_val",'Valor da nota <span class="sub">% do contrato ou R$</span>',n.valor,"baseNota","nInfo()")}
+    </div>
+    <div class="fgrid">
+      <div class="field" style="grid-column:span 2"><label>Descrição / marco <span class="sub">opcional</span></label><input id="n_desc" value="${esc(n.descricao)}" placeholder="ex.: 2ª parcela – protocolo na Prefeitura"></div>
+      <div class="field"><label>Situação</label><select id="n_st" onchange="document.getElementById('n_pgwrap').style.display=this.value==='paga'?'':'none'">
+        <option value="emitida" ${n.status==="emitida"?"selected":""}>Aguardando pagamento</option>
+        <option value="paga" ${n.status==="paga"?"selected":""}>Paga</option>
+        <option value="cancelada" ${n.status==="cancelada"?"selected":""}>Cancelada</option></select></div>
+      <div class="field" id="n_pgwrap" style="${n.status==="paga"?"":"display:none"}"><label>Data do pagamento</label><input id="n_dpg" type="date" value="${n.dataPagamento||todayISO()}"></div>
+    </div>
+    <div id="n_info"></div>
+    <div id="n_rateio"></div>
+    ${notaId?"":`<div id="n_prox"></div>`}
+    <div class="field"><label>Observações</label><textarea id="n_obs">${esc(n.obs)}</textarea></div>
+  </div>
+  <footer>${notaId?`<button class="btn danger" style="margin-right:auto" onclick="delNota('${notaId}')">Excluir nota</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveNota()">${notaId?"Salvar alterações":"Registrar nota"}</button></footer>`);
+  nRefresh(); valToPct("n_val","baseNota");
+}
+function nSaldoAntes(c){ return c.valor-sum(notasDe(c).filter(x=>x.id!==nDraft.n.id),x=>x.valor); }
+function nInfo(){
+  const c=cById(nDraft.n.contratoId), el=document.getElementById("n_info"); if(!el) return;
+  if(!c){ el.innerHTML=""; return; }
+  const v=parseMoney(document.getElementById("n_val").value), antes=nSaldoAntes(c), depois=antes-v;
+  el.innerHTML=`<div class="alert ${depois<-EPS?"warn":"info"}">Saldo a faturar do contrato: <b class="num">${brl(antes)}</b> → após esta nota: <b class="num">${brl(depois)}</b>${depois<-EPS?" — a nota ultrapassa o saldo. Se houve aditivo, atualize o valor do contrato.":""}</div>`;
+  rSum();
+}
+function nRefresh(){
+  const c=cById(nDraft.n.contratoId);
+  const rEl=document.getElementById("n_rateio");
+  if(!c||!c.disciplinas.length){ rEl.innerHTML=""; }
+  else{
+    const ns=notasDe(c).filter(x=>x.id!==nDraft.n.id);
+    const temVal=c.disciplinas.some(d=>d.valor>0);
+    rEl.innerHTML=`<fieldset><legend>Rateio por disciplina <span class="muted" style="font-weight:400">— opcional</span></legend>
+      <div class="tablewrap"><table><thead><tr><th>Disciplina</th><th class="r">Contratado</th><th class="r">Saldo</th><th class="r" style="width:230px">Nesta nota (% da disciplina ou R$)</th></tr></thead><tbody>
+      ${c.disciplinas.map(d=>{ const f=sum(ns,x=>(x.rateio||{})[d.id]||0); return `<tr><td>${esc(d.nome)}</td><td class="r num">${d.valor?brl(d.valor):"—"}</td><td class="r num">${d.valor?brl(d.valor-f):"—"}</td>
+        <td class="rv-cell"><div class="pctpair"><div class="pctin"><input class="inp money rp" inputmode="decimal" placeholder="0" data-base="${d.valor}" ${d.valor?"":"disabled title='Sem valor contratado para esta disciplina'"} oninput="rPct(this)"><span>%</span></div>
+          <input class="inp money rv" inputmode="decimal" data-id="${d.id}" data-saldo="${d.valor?d.valor-f:0}" value="${mv((nDraft.n.rateio||{})[d.id])}" oninput="rVal(this)"></div></td></tr>`; }).join("")}
+      </tbody></table></div>
+      <div style="display:flex;gap:8px;align-items:center;margin:10px 0 8px;flex-wrap:wrap">
+        ${temVal?`<button class="btn sm" onclick="ratearProp()">Ratear proporcional ao saldo</button>`:""}
+        <button class="btn sm" onclick="modal.querySelectorAll('.rv,.rp').forEach(i=>i.value='');rSum()">Limpar</button>
+        <span id="rsum" class="hint" style="margin-left:auto"></span></div></fieldset>`;
+  }
+  modal.querySelectorAll(".rv").forEach(v=>rVal(v,true));
+  const pEl=document.getElementById("n_prox");
+  if(pEl){
+    if(!c){ pEl.innerHTML=""; }
+    else{
+      const p=c.prox;
+      pEl.innerHTML=`<fieldset><legend>Próxima cobrança deste contrato</legend>
+        ${temProx(p)?`<p class="hint" style="margin:0 0 8px">Previsão atual: <b>${[p.data&&fdate(p.data),esc(p.descricao),p.valor&&brl(p.valor)+pctOf(p.valor,c)].filter(Boolean).join(" · ")}</b>. Se ela corresponde a esta nota, informe abaixo a seguinte — ou deixe em branco se não houver.</p>`
+          :`<p class="hint" style="margin:0 0 8px">Informe quando será a próxima cobrança, se houver.</p>`}
+        ${c.condicao?`<p class="hint" style="margin:0 0 8px">Condição do contrato: ${esc(c.condicao)}</p>`:""}
+        <div class="fgrid">
+          <div class="field"><label>Data prevista</label><input id="np_d" type="date"></div>
+          <div class="field"><label>Marco / descrição</label><input id="np_desc"></div>
+          ${pctField("np_val",'Valor previsto <span class="sub">% do contrato ou R$</span>',0,"baseNota")}</div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-bottom:8px"><input type="checkbox" id="np_keep" ${temProx(p)?"":"disabled"}> Manter a previsão atual (esta nota não era a cobrança prevista)</label>
+      </fieldset>`;
+    }
+  }
+  nInfo();
+}
+function rPct(el){
+  const row=el.closest("tr"), b=+el.dataset.base||0, p=parseMoney(el.value);
+  row.querySelector(".rv").value=(b&&p)?nf2(Math.round(b*p)/100):""; rSum();
+}
+function rVal(el,silencioso){
+  const pi=el.closest("tr").querySelector(".rp"), b=+pi.dataset.base||0, v=parseMoney(el.value);
+  if(document.activeElement!==pi) pi.value=(b&&v)?pctFmt(v/b*100):"";
+  if(!silencioso) rSum();
+}
+function rSum(){
+  const el=document.getElementById("rsum"); if(!el) return;
+  const s=sum([...modal.querySelectorAll(".rv")],i=>parseMoney(i.value)), v=parseMoney(document.getElementById("n_val").value);
+  if(!s){ el.textContent="Sem rateio: a nota conta só no total do contrato."; el.style.color=""; return; }
+  const diff=v-s;
+  el.innerHTML= Math.abs(diff)<=EPS?`Rateado ${brl(s)} — confere com a nota`
+    :`Rateado ${brl(s)} de ${brl(v)} (${diff>0?"faltam "+brl(diff):"excede "+brl(-diff)}) <button class="btn sm" style="margin-left:6px" onclick="usarSomaRateio()">Usar ${brl(s)} como valor da nota</button>`;
+  el.style.color= diff<-EPS?"var(--red)":Math.abs(diff)<=EPS?"var(--ok)":"var(--amber)";
+}
+function usarSomaRateio(){
+  const s=sum([...modal.querySelectorAll(".rv")],i=>parseMoney(i.value));
+  $("n_val").value=nf2(s); valToPct("n_val","baseNota"); nInfo();
+}
+function ratearProp(){
+  const v=parseMoney(document.getElementById("n_val").value); if(!v){ toast("Informe primeiro o valor da nota"); return; }
+  const ins=[...modal.querySelectorAll(".rv")], base=ins.map(i=>Math.max(0,+i.dataset.saldo)), tot=base.reduce((a,b)=>a+b,0);
+  if(!tot){ toast("Nenhuma disciplina com saldo para ratear"); return; }
+  let acc=0; ins.forEach((i,k)=>{ let x=k===ins.length-1?Math.round((v-acc)*100)/100:Math.round(v*base[k]/tot*100)/100; if(k<ins.length-1) acc+=x; i.value=x?nf2(x):""; rVal(i,true); });
+  rSum();
+}
+function saveNota(){
+  const n=nDraft.n;
+  n.contratoId=document.getElementById("n_c").value;
+  if(!n.contratoId){ toast("Selecione o contrato"); return; }
+  n.numero=document.getElementById("n_num").value.trim();
+  n.data=document.getElementById("n_data").value;
+  n.valor=parseMoney(document.getElementById("n_val").value);
+  if(!(n.valor>0)){ toast("Informe o valor da nota"); return; }
+  if(!n.data){ toast("Informe a data de emissão"); return; }
+  if(!n.numero && !confirm("A nota está sem número. Registrar mesmo assim?")) return;
+  if(n.numero && state.notas.some(x=>x.id!==n.id&&x.numero===n.numero) && !confirm(`Já existe uma nota com o nº ${n.numero}. Registrar mesmo assim?`)) return;
+  n.descricao=document.getElementById("n_desc").value.trim();
+  n.status=document.getElementById("n_st").value;
+  n.dataPagamento=n.status==="paga"?document.getElementById("n_dpg").value:"";
+  n.obs=document.getElementById("n_obs").value.trim();
+  const r={}; modal.querySelectorAll(".rv").forEach(i=>{ const x=parseMoney(i.value); if(x) r[i.dataset.id]=x; });
+  if(sum(Object.values(r),x=>x)-n.valor>EPS){ toast("O rateio por disciplina passa do valor da nota"); return; }
+  n.rateio=r;
+  const c=cById(n.contratoId);
+  if(nDraft.isNew && document.getElementById("np_d")){
+    if(!document.getElementById("np_keep").checked)
+      c.prox={data:document.getElementById("np_d").value,descricao:document.getElementById("np_desc").value.trim(),valor:parseMoney(document.getElementById("np_val").value)};
+    state.notas.push(n);
+  } else state.notas[state.notas.findIndex(x=>x.id===n.id)]=n;
+  touch(); closeModal(); render();
+  const rs=resumo(c);
+  toast(nDraft.isNew?`NF ${n.numero} registrada · saldo a faturar ${brl(rs.saldo)}`:"Nota atualizada");
+}
+function delNota(id){
+  if(!confirm("Excluir esta nota? Se ela foi cancelada na prefeitura, prefira marcar a situação como \"Cancelada\" para manter o histórico.")) return;
+  state.notas=state.notas.filter(x=>x.id!==id); touch(); closeModal(); render(); toast("Nota excluída");
+}
+
+/* ================= exemplo ================= */
+function loadExample(){
+  const d=(m,dd)=>{ const x=new Date(); x.setMonth(x.getMonth()+m); x.setDate(dd); return new Date(x.getTime()-x.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+  const mk=(nome,valor)=>({id:uid(),nome,valor});
+  const kA={id:uid(),nome:"Construtora Alfa",tipo:"Construtora / incorporadora"}, kB={id:uid(),nome:"Loteadora Beta",tipo:"Loteadora"}, kP={id:uid(),nome:"Prefeitura Municipal",tipo:"Poder público"};
+  const c1={id:uid(),contratanteId:kA.id,empreendimento:"Loteamento Jardim Exemplo",proposta:"P-041/2026",numContrato:"CT-118/2026",data:d(-5,10),valor:180000,
+    disciplinas:[mk("Terraplenagem",30000),mk("Drenagem",45000),mk("Água",25000),mk("Esgoto",30000),mk("Pavimentação",20000),mk("Sinalização",10000),mk("EIV",20000)],
+    condicao:"30% na assinatura, 40% no protocolo na Prefeitura, 30% na aprovação",prox:{data:d(0,-3),descricao:"3ª parcela – aprovação",valor:54000}};
+  const c1b={id:uid(),contratanteId:kA.id,empreendimento:"Residencial Alfa II",proposta:"P-077/2026",data:d(-1,12),valor:48000,
+    disciplinas:[mk("Drenagem",24000),mk("Água",12000),mk("Esgoto",12000)],condicao:"50% na assinatura, 50% na aprovação",prox:{data:d(1,20),descricao:"Aprovação",valor:24000}};
+  const c2={id:uid(),contratanteId:kB.id,empreendimento:"Condomínio Vila Exemplo",proposta:"P-057/2026",data:d(-2,3),valor:62000,
+    disciplinas:[mk("RIT",18000),mk("PGRS",8000),mk("PGRCC",8000),mk("Estação elevatória de esgoto",28000)],
+    condicao:"50% na assinatura, 50% na entrega",prox:{data:d(1,15),descricao:"Entrega dos relatórios",valor:31000}};
+  const c3={id:uid(),contratanteId:kP.id,empreendimento:"Estudo de macrodrenagem",proposta:"P-102/2025",numContrato:"CT-12/2025",data:d(-10,1),valor:40000,
+    disciplinas:[mk("Drenagem",0),{id:uid(),nome:"Estudo hidrológico",valor:0}],condicao:"Medições mensais"};
+  const r=(c,vals)=>Object.fromEntries(c.disciplinas.map((x,i)=>[x.id,vals[i]]).filter(p=>p[1]));
+  const fid=state.fileId;
+  state=migrate({version:2,disciplinas:state.disciplinas,tiposContratante:state.tiposContratante,contratantes:[kA,kB,kP],contratos:[c1,c1b,c2,c3],notas:[
+    {contratoId:c1.id,numero:"1021",data:d(-5,15),valor:54000,descricao:"1ª parcela – assinatura",status:"paga",dataPagamento:d(-4,2),rateio:r(c1,[9000,13500,7500,9000,6000,3000,6000])},
+    {contratoId:c1.id,numero:"1047",data:d(-2,20),valor:72000,descricao:"2ª parcela – protocolo",status:"emitida"},
+    {contratoId:c1b.id,numero:"1061",data:d(-1,14),valor:24000,descricao:"1ª parcela – assinatura",status:"paga",dataPagamento:d(0,1),rateio:r(c1b,[12000,6000,6000])},
+    {contratoId:c2.id,numero:"1050",data:d(-1,8),valor:31000,descricao:"1ª parcela – assinatura",status:"paga",dataPagamento:d(0,2)},
+    {contratoId:c3.id,numero:"998",data:d(-9,5),valor:20000,descricao:"Medição 1",status:"paga",dataPagamento:d(-8,10)},
+    {contratoId:c3.id,numero:"1012",data:d(-7,5),valor:20000,descricao:"Medição 2",status:"paga",dataPagamento:d(-6,12)}]});
+  state.fileId=fid; touch(); render(); toast("Exemplo carregado — para começar de verdade, use \"Apagar todos os dados\" em Configurações");
+}
+
+/* ================= barra de ferramentas ================= */
+function download(name,content,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),500); }
+const stamp=()=>todayISO();
+$("btnPrint").addEventListener("click",()=>window.print());
+$("btnExport").addEventListener("click",()=>{ download(`controle-pagamentos_backup_${stamp()}.json`,JSON.stringify(state,null,1),"application/json"); toast("Backup exportado"); });
+function exportNotasCsv(){
+  const rows=[["NF","Emissão","Contratante","Tipo","Obra","Nº proposta","Nº contrato","Descrição","Valor","Situação","Data pagamento"]];
+  state.notas.slice().sort((a,b)=>a.data.localeCompare(b.data)).forEach(n=>{ const c=cById(n.contratoId)||{};
+    rows.push([n.numero,fdate(n.data),cliNome(c),cliTipo(c),c.empreendimento,c.proposta,c.numContrato,n.descricao,nf2(n.valor),{emitida:"Aguardando",paga:"Paga",cancelada:"Cancelada"}[n.status],n.status==="paga"?fdate(n.dataPagamento):""]); });
+  downloadCsv(`notas-fiscais_${stamp()}.csv`,rows);
+}
+$("btnImport").addEventListener("click",()=>$("fileInput").click());
+$("fileInput").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async()=>{ try{ let txt=rd.result, o;
+    if(/^\s*[{\[]/.test(txt)) o=JSON.parse(txt);
+    else { const m=txt.match(/window\.__BAKED__=("(?:[^"\\]|\\.)*");/); if(!m) throw 0; o=JSON.parse(JSON.parse(m[1])); }
+    if(!Array.isArray(o.contratos)) throw 0;
+    if(temDados(state) && !confirm("Importar substitui os dados atuais (eles vão para a pasta de backups). Continuar?")) return;
+    await fsBackupNow("antes-de-importar");
+    const fid=state.fileId; o=migrate(o); o.fileId=fid; state=o;
+    selContrato=null; selK=null; touch(); render();
+    toast(`Importado: ${state.contratantes.length} contratante(s), ${state.contratos.length} contrato(s), ${state.notas.length} nota(s)`);
+  }catch(err){ toast("Arquivo não reconhecido — use um .html salvo pela planilha ou um backup .json"); } };
+  rd.readAsText(f); e.target.value="";
+});
+
+/* ================= app instalável: service worker e atualização ================= */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").then(reg=>{
+    const mostrar=()=>$("updbar").classList.add("show");
+    if(reg.waiting&&navigator.serviceWorker.controller) mostrar();
+    reg.addEventListener("updatefound",()=>{ const nw=reg.installing; nw&&nw.addEventListener("statechange",()=>{ if(nw.state==="installed"&&navigator.serviceWorker.controller) mostrar(); }); });
+    setInterval(()=>reg.update().catch(()=>{}),60*60*1000);
+  }).catch(()=>{});
+  let recarregou=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(recarregou) return; recarregou=true; location.reload(); });
+}
+async function aplicarAtualizacao(){
+  if(FS.pending||FS.saving){ await fsSave(); }
+  const reg=await navigator.serviceWorker.getRegistration(); if(reg&&reg.waiting) reg.waiting.postMessage("skip"); else location.reload();
+}
+
+/* ================= início ================= */
+render();
+fsInit();
+</script>
+</body>
+</html>
