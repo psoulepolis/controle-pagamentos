@@ -1,4 +1,4 @@
-CONTROLE DE PAGAMENTOS · POLIS — app instalável (R04)
+CONTROLE FINANCEIRO · POLIS — app instalável (R06)
 
 ARQUIVOS DESTA PASTA (todos vão para o GitHub, sem renomear)
   index.html             o aplicativo
@@ -38,3 +38,12 @@ CAMINHOS DIFERENTES PARA A MESMA PASTA (R04)
   Ex.: "Escritório (rede)" e "Fora do escritório (RaiDrive)". O app usa o primeiro que responder.
   Sem acesso a nenhum, as alterações ficam guardadas no computador e são gravadas na pasta
   sozinhas quando ela voltar (o app tenta a cada 30 s).
+
+DESPESAS E FINANCEIRO (R05)
+  O seletor no topo alterna entre Recebimentos, Despesas e Financeiro.
+  Para trazer a planilha de despesas de 2026: Importar > despesas-2026.json.
+  A importação substitui só a parte de despesas; contratos e notas não mudam.
+
+ENTRADAS (R06)
+  Financeiro > Entradas reúne as notas fiscais pagas e os recebimentos registrados sem nota no app.
+  Para trazer o 1º semestre de 2026: Importar > entradas-2026-1sem.json.

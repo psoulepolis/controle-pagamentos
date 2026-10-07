@@ -1,7 +1,7 @@
 {
-  "name": "Controle de Pagamentos · Polis",
-  "short_name": "Pagamentos",
-  "description": "Contratos, notas fiscais e recebimentos dos projetos da Polis",
+  "name": "Controle Financeiro · Polis",
+  "short_name": "Financeiro Polis",
+  "description": "Recebimentos, despesas e resultado financeiro da Polis",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

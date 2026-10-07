@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Pagamentos · Polis</title>
+<title>Controle Financeiro · Polis</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1F1D3D">
 <link rel="icon" href="icon-192.png">
@@ -227,6 +227,41 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
 .rep-kv{margin-bottom:14px}
 .updbar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(calc(100% + 40px));visibility:hidden;background:var(--ink);color:#fff;border-radius:10px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;z-index:90;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .updbar.show{transform:translateX(-50%) translateY(0);visibility:visible}
+.modes{display:flex;background:#2F2B5C;border:1px solid #423D78;border-radius:9px;padding:3px;gap:2px}
+.modes button{border:none;background:transparent;color:#C9C4EE;font-size:13px;font-weight:600;padding:6px 14px;border-radius:7px}
+.modes button:hover{color:#fff}
+.modes button.on{background:#fff;color:var(--ink)}
+body[data-mode="desp"] .tab.active{border-bottom-color:#C8691C}
+body[data-mode="fin"] .tab.active{border-bottom-color:#2E7D5B}
+.mesnav{display:flex;align-items:center;gap:8px}
+.mesnav b{font-size:16px;min-width:170px;text-align:center;display:inline-block}
+.mesnav b::first-letter{text-transform:uppercase}
+.chip.bad .v,.neg{color:var(--red)!important}
+.pos{color:var(--ok)}
+.bar.over .pg{background:var(--red)}
+.fixlist{margin-top:10px;display:flex;flex-direction:column}
+.fixrow{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.fixrow:last-child{border-bottom:none}
+.fixrow>span:first-child{color:var(--muted)}
+.fixrow.ok>span:first-child{color:var(--ok);font-weight:700}
+.fixrow small{display:block;color:var(--muted);font-size:11.5px}
+table.grade{font-size:12.5px}
+table.grade td,table.grade th{padding:6px 8px}
+table.grade tr.grp td{background:var(--calc);font-weight:650}
+table.grade td.cat{padding-left:20px}
+table.grade td.cellclick{cursor:pointer}
+table.grade td.cellclick:hover{background:var(--water-fill-2);color:var(--water-d)}
+table.plan input.pinp{width:86px;border:1px solid transparent;border-radius:5px;padding:4px 6px;font-size:12.5px;background:transparent;text-align:right;font-family:var(--mono)}
+table.plan input.pinp:hover{border-color:var(--line)}
+table.plan input.pinp:focus{outline:none;border-color:var(--water);background:#fff}
+table.dre tr.grp td{background:var(--calc);font-weight:700}
+table.dre tr.sub td{font-weight:650}
+table.dre tr.cat td:first-child{padding-left:22px;color:var(--ink-2)}
+table.dre tr.res td{background:var(--ink);color:#fff}
+table.dre tr.res td.neg{color:#FFB4A8!important}
+.grpbox{border:1px solid var(--line-2);border-radius:9px;padding:10px 10px 4px;margin-bottom:12px}
+.catrow.off input:first-child{color:var(--muted);text-decoration:line-through}
+@media(max-width:700px){.modes{order:3;width:100%}.modes button{flex:1}}
 @media print{
   .topbar,.tabs,.btn,.seg,.toolbar .inp,.no-print{display:none!important}
   body{background:#fff}
@@ -234,8 +269,10 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
   .clist{max-height:none}
   .split{grid-template-columns:1fr}
   .split>.card:first-child{display:none}
+  .modes{display:none!important}
   #banner,.updbar,.toast{display:none!important}
-  body.printing-report .wrap>*:not(#panel-relatorios){display:none!important}
+  body.printing-report .wrap>*:not(.print-target){display:none!important}
+  body.printing-report .rep{border:none}
   body.printing-report #repOut{border:none}
   body.printing-report .rep .body{padding:0}
   .rep table{font-size:11px}
@@ -248,7 +285,12 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
   <div class="brand">
     <img class="brandlogo" src="data:image/png;base64,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" alt="Polis">
     <span class="brandsep"></span>
-    <span class="ttl">Controle de pagamentos</span>
+    <span class="ttl">Controle financeiro</span>
+  </div>
+  <div class="modes" id="modes" role="tablist" aria-label="Área">
+    <button data-mode="rec" onclick="setMode('rec')">Recebimentos</button>
+    <button data-mode="desp" onclick="setMode('desp')">Despesas</button>
+    <button data-mode="fin" onclick="setMode('fin')">Financeiro</button>
   </div>
   <div class="tools">
     <button class="saveflag" id="saveflag" disabled></button>
@@ -258,14 +300,7 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
     <input type="file" id="fileInput" accept=".json,.html,.htm,application/json,text/html" hidden>
   </div>
 </div>
-<nav class="tabs">
-  <button class="tab active" data-tab="painel">Painel</button>
-  <button class="tab" data-tab="contratantes">Contratantes<span class="cnt" id="cntK">0</span></button>
-  <button class="tab" data-tab="contratos">Contratos<span class="cnt" id="cntC">0</span></button>
-  <button class="tab" data-tab="notas">Notas fiscais<span class="cnt" id="cntN">0</span></button>
-  <button class="tab" data-tab="relatorios">Relatórios</button>
-  <button class="tab" data-tab="config">Configurações</button>
-</nav>
+<nav class="tabs" id="tabs"></nav>
 <main class="wrap">
   <div id="banner"></div>
   <section class="panel active" id="panel-painel"></section>
@@ -274,25 +309,58 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
   <section class="panel" id="panel-notas"></section>
   <section class="panel" id="panel-relatorios"></section>
   <section class="panel" id="panel-config"></section>
+  <section class="panel" id="panel-dpainel"></section>
+  <section class="panel" id="panel-dlanc"></section>
+  <section class="panel" id="panel-dgrade"></section>
+  <section class="panel" id="panel-dplan"></section>
+  <section class="panel" id="panel-demp"></section>
+  <section class="panel" id="panel-dconfig"></section>
+  <section class="panel" id="panel-fvisao"></section>
+  <section class="panel" id="panel-fent"></section>
+  <section class="panel" id="panel-frel"></section>
 </main>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
 <div class="updbar" id="updbar"><span>Nova versão do app disponível</span><button class="btn sm primary" onclick="aplicarAtualizacao()">Atualizar agora</button></div>
 <script>
 /* ================= estado ================= */
-const APP_VERSION="R04";
+const APP_VERSION="R06";
 const LS_CACHE="polis.pagamentos.app.cache";
 const DATA_FILE="controle-pagamentos.json";
 const DISC_PADRAO=["Terraplenagem","Drenagem","Água","Esgoto","Estação elevatória de esgoto","Pavimentação","Sinalização","EIV","RIT","PGRCC","PGRS"];
 const TIPOS_PADRAO=["Construtora / incorporadora","Loteadora","Poder público","Pessoa física","Outros"];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const clone=o=>JSON.parse(JSON.stringify(o));
+/* ================= DESPESAS: dados ================= */
+const DESP_GRUPOS=[["g-esc","Escritório"],["g-pes","Pessoal"],["g-imp","Impostos, CREA/ART e benefícios"],["g-tre","Treinamentos e compras"]];
+const DESP_CATS=[["c-alug","g-esc","Aluguel"],["c-dger","g-esc","Despesas gerais"],["c-sal","g-pes","Salários e pró-labore"],["c-terc","g-pes","Terceirizados"],
+  ["c-imp","g-imp","Impostos"],["c-art","g-imp","CREA e ART"],["c-ben","g-imp","Benefícios"],["c-trein","g-tre","Treinamentos"],["c-comp","g-tre","Compras"]];
+function blankDesp(){ return {grupos:DESP_GRUPOS.map(([id,nome])=>({id,nome})),categorias:DESP_CATS.map(([id,grupoId,nome])=>({id,grupoId,nome,ativa:true})),
+  lancamentos:[],planejado:{},fixas:[],pessoas:["Polis"],teto:{categoriaId:"c-comp",valor:0},emprestimos:[]}; }
+function migrateDesp(d){
+  if(!d||!Array.isArray(d.categorias)) d=Object.assign(blankDesp(),d&&Array.isArray(d.lancamentos)?{lancamentos:d.lancamentos}:{});
+  d.grupos=(d.grupos||[]).map(g=>({id:g.id||uid(),nome:g.nome||"Grupo"}));
+  d.categorias=(d.categorias||[]).map(c=>({id:c.id||uid(),grupoId:c.grupoId||(d.grupos[0]||{}).id,nome:c.nome||"Categoria",ativa:c.ativa!==false}));
+  d.lancamentos=(d.lancamentos||[]).map(l=>({id:l.id||uid(),data:l.data||"",categoriaId:l.categoriaId||"",descricao:l.descricao||"",valor:+l.valor||0,
+    pagoPor:l.pagoPor||"Polis",reembolso:l.reembolso||"",dataReembolso:l.dataReembolso||"",obs:l.obs||"",fixaId:l.fixaId||""}));
+  const p={}; Object.entries(d.planejado||{}).forEach(([ano,cats])=>{ p[ano]={}; Object.entries(cats||{}).forEach(([cid,arr])=>{ p[ano][cid]=Array.from({length:12},(_,i)=>+(arr||[])[i]||0); }); }); d.planejado=p;
+  d.fixas=(d.fixas||[]).map(f=>({id:f.id||uid(),categoriaId:f.categoriaId||"",descricao:f.descricao||"",valor:+f.valor||0,pagoPor:f.pagoPor||"Polis",ativa:f.ativa!==false}));
+  d.pessoas=Array.isArray(d.pessoas)&&d.pessoas.length?d.pessoas:["Polis"]; if(!d.pessoas.includes("Polis")) d.pessoas.unshift("Polis");
+  d.teto=d.teto||{categoriaId:"",valor:0}; d.teto.valor=+d.teto.valor||0;
+  d.emprestimos=(d.emprestimos||[]).map(e=>({id:e.id||uid(),pessoa:e.pessoa||"",descricao:e.descricao||"",data:e.data||"",valor:+e.valor||0,parcela:+e.parcela||0,obs:e.obs||"",
+    pagamentos:(e.pagamentos||[]).map(p=>({id:p.id||uid(),data:p.data||"",valor:+p.valor||0,obs:p.obs||""}))}));
+  return d;
+}
+
 const norm=x=>String(x||"").trim().toLowerCase();
-function blankState(){ return {version:2,updatedAt:0,disciplinas:DISC_PADRAO.slice(),tiposContratante:TIPOS_PADRAO.slice(),contratantes:[],contratos:[],notas:[]}; }
+function blankState(){ return {version:2,updatedAt:0,disciplinas:DISC_PADRAO.slice(),tiposContratante:TIPOS_PADRAO.slice(),contratantes:[],contratos:[],notas:[],despesas:blankDesp(),entradas:[],contas:["Polis"]}; }
 function migrate(s){
   s=s||blankState();
   if(!s.fileId) s.fileId=uid();
-  s.version=2;
+  s.version=3;
+  s.despesas=migrateDesp(s.despesas);
+  s.contas=Array.isArray(s.contas)&&s.contas.length?s.contas:["Polis"]; if(!s.contas.includes("Polis")) s.contas.unshift("Polis");
+  s.entradas=(s.entradas||[]).map(e=>({id:e.id||uid(),data:e.data||"",origem:e.origem||"",valor:+e.valor||0,conta:e.conta||"Polis",obs:e.obs||"",nfId:e.nfId||"",importado:!!e.importado,lote:e.lote||""}));
   if(!Array.isArray(s.disciplinas)) s.disciplinas=DISC_PADRAO.slice();
   if(!Array.isArray(s.tiposContratante)) s.tiposContratante=TIPOS_PADRAO.slice();
   s.contratantes=(s.contratantes||[]).map(k=>({id:k.id||uid(),nome:k.nome||"",tipo:k.tipo||"",documento:k.documento||"",contato:k.contato||"",obs:k.obs||""}));
@@ -310,7 +378,7 @@ function migrate(s){
       condicao:c.condicao||"",prox:c.prox||{data:"",descricao:"",valor:0},obs:c.obs||"",encerrado:!!c.encerrado};
   });
   s.notas=(s.notas||[]).map(n=>({id:n.id||uid(),contratoId:n.contratoId,numero:n.numero||"",data:n.data||"",valor:+n.valor||0,
-    descricao:n.descricao||"",status:n.status||"emitida",dataPagamento:n.dataPagamento||"",rateio:n.rateio||{},obs:n.obs||""}));
+    descricao:n.descricao||"",status:n.status||"emitida",dataPagamento:n.dataPagamento||"",conta:n.conta||"Polis",rateio:n.rateio||{},obs:n.obs||""}));
   delete s.savedAt;
   return s;
 }
@@ -579,21 +647,37 @@ function statusNota(n){
 }
 
 /* ================= abas ================= */
-let curTab="painel";
-document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+/* três áreas no mesmo app; cada uma com suas abas. Configurações (pasta de dados) aparece em todas. */
+const MODES={
+  rec:[["painel","Painel"],["contratantes","Contratantes","cntK"],["contratos","Contratos","cntC"],["notas","Notas fiscais","cntN"],["relatorios","Relatórios"],["config","Configurações"]],
+  desp:[["dpainel","Painel"],["dlanc","Lançamentos","cntL"],["dgrade","Despesas do ano"],["dplan","Planejamento"],["demp","Empréstimos"],["dconfig","Categorias e fixas"],["config","Configurações"]],
+  fin:[["fvisao","Visão geral"],["fent","Entradas","cntE"],["frel","Relatórios"],["config","Configurações"]]
+};
+let curMode=(()=>{ try{ return localStorage.getItem("polis.modo")||"rec"; }catch(e){ return "rec"; } })(); if(!MODES[curMode]) curMode="rec";
+const lastTab={rec:"painel",desp:"dpainel",fin:"fvisao"};
+let curTab=lastTab[curMode];
+function renderTabs(){
+  $("tabs").innerHTML=MODES[curMode].map(([k,t,c])=>`<button class="tab ${k===curTab?"active":""}" data-tab="${k}" onclick="showTab('${k}')">${t}${c?`<span class="cnt" id="${c}">0</span>`:""}</button>`).join("");
+  document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on",b.dataset.mode===curMode));
+  document.body.dataset.mode=curMode;
+}
+function setMode(m){
+  if(!MODES[m]) return; curMode=m; try{ localStorage.setItem("polis.modo",m); }catch(e){}
+  curTab=lastTab[m]; renderTabs(); showTab(curTab);
+}
 function showTab(t){
-  curTab=t;
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+  if(!MODES[curMode].some(x=>x[0]===t)){ const m=Object.keys(MODES).find(k=>MODES[k].some(x=>x[0]===t)); if(m){ curMode=m; try{ localStorage.setItem("polis.modo",m); }catch(e){} } }
+  curTab=t; lastTab[curMode]=t; renderTabs();
   document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+t));
   render();
   window.scrollTo({top:0});
 }
 function render(){
-  document.getElementById("cntC").textContent=state.contratos.length;
-  document.getElementById("cntN").textContent=state.notas.length;
-  document.getElementById("cntK").textContent=state.contratantes.length;
+  const cnt=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  cnt("cntC",state.contratos.length); cnt("cntN",state.notas.length); cnt("cntK",state.contratantes.length); cnt("cntL",state.despesas.lancamentos.length); cnt("cntE",state.entradas.length+state.notas.filter(n=>n.status==="paga").length);
   renderBanner();
-  ({painel:renderPainel,contratantes:renderContratantes,contratos:renderContratos,notas:renderNotas,relatorios:renderRelatorios,config:renderConfig})[curTab]();
+  ({painel:renderPainel,contratantes:renderContratantes,contratos:renderContratos,notas:renderNotas,relatorios:renderRelatorios,config:renderConfig,
+    dpainel:renderDPainel,dlanc:renderDLanc,dgrade:renderDGrade,dplan:renderDPlan,demp:renderDEmp,dconfig:renderDConfig,fvisao:renderFVisao,fent:renderFEnt,frel:renderFRel})[curTab]();
   updateFlag();
 }
 
@@ -907,7 +991,7 @@ function renderConfig(){
     <div>
       <div class="card"><header><h3>Caminhos da pasta de dados</h3></header><div class="body">${pasta}</div></div>
       ${listEditor("tiposContratante","Tipos de contratante","Usados para classificar e filtrar contratantes. Renomear aqui atualiza os contratantes que já usam o tipo.","Novo tipo (ex.: Associação de moradores)")}
-      <div class="card"><header><div><h3>Começar do zero</h3><p class="hint">Apaga todos os contratantes, contratos e notas. Antes, o arquivo atual é copiado para a pasta de backups.</p></div>
+      <div class="card"><header><div><h3>Começar do zero</h3><p class="hint">Apaga contratantes, contratos, notas, despesas lançadas, planejamento e empréstimos. Categorias e despesas fixas são mantidas. Antes, o arquivo atual é copiado para a pasta de backups.</p></div>
         <button class="btn danger" onclick="apagarTudo()">Apagar todos os dados</button></header></div>
       <p class="hint">Versão do app: ${APP_VERSION}</p>
     </div>
@@ -919,8 +1003,10 @@ async function apagarTudo(){
   const t=prompt('Isso apaga TODOS os dados do controle. Para confirmar, digite APAGAR');
   if((t||"").trim().toUpperCase()!=="APAGAR") return;
   await fsBackupNow("antes-de-apagar");
-  const d=state.disciplinas, tp=state.tiposContratante, fid=state.fileId;
+  const d=state.disciplinas, tp=state.tiposContratante, fid=state.fileId, dp=state.despesas, ct=state.contas;
   state=migrate(blankState()); state.disciplinas=d; state.tiposContratante=tp; state.fileId=fid;
+  state.contas=ct;
+  Object.assign(state.despesas,{grupos:dp.grupos,categorias:dp.categorias,fixas:dp.fixas,pessoas:dp.pessoas,teto:dp.teto});
   selContrato=null; selK=null; touch(); render(); toast("Dados apagados — cópia anterior guardada em backups");
 }
 
@@ -1058,7 +1144,7 @@ function renderRelatorios(){
       <div class="rep-head"><img src="${document.querySelector('.brandlogo').src}" alt="Polis"><div><h2>${r.titulo}</h2><div class="hint">${r.sub}</div></div><div class="hint rep-gen">Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</div></div>
       ${r.html}</div></div>`;
 }
-function relPrint(){ document.body.classList.add("printing-report"); window.print(); setTimeout(()=>document.body.classList.remove("printing-report"),500); }
+function relPrint(){ const p=document.querySelector('.panel.active'); document.querySelectorAll('.print-target').forEach(x=>x.classList.remove('print-target')); if(p) p.classList.add('print-target'); document.body.classList.add("printing-report"); window.print(); setTimeout(()=>document.body.classList.remove("printing-report"),500); }
 function relCsv(){ if(!ultimoRel) return; downloadCsv(`${ultimoRel.titulo.toLowerCase().replace(/[^a-z0-9à-ú]+/gi,"-")}_${todayISO()}.csv`,ultimoRel.csv); }
 function downloadCsv(nome,rows){
   const csv="\ufeff"+rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
@@ -1261,11 +1347,12 @@ function openNota({contratoId,notaId}){
     </div>
     <div class="fgrid">
       <div class="field" style="grid-column:span 2"><label>Descrição / marco <span class="sub">opcional</span></label><input id="n_desc" value="${esc(n.descricao)}" placeholder="ex.: 2ª parcela – protocolo na Prefeitura"></div>
-      <div class="field"><label>Situação</label><select id="n_st" onchange="document.getElementById('n_pgwrap').style.display=this.value==='paga'?'':'none'">
+      <div class="field"><label>Situação</label><select id="n_st" onchange="['n_pgwrap','n_ctwrap'].forEach(i=>document.getElementById(i).style.display=this.value==='paga'?'':'none')">
         <option value="emitida" ${n.status==="emitida"?"selected":""}>Aguardando pagamento</option>
         <option value="paga" ${n.status==="paga"?"selected":""}>Paga</option>
         <option value="cancelada" ${n.status==="cancelada"?"selected":""}>Cancelada</option></select></div>
       <div class="field" id="n_pgwrap" style="${n.status==="paga"?"":"display:none"}"><label>Data do pagamento</label><input id="n_dpg" type="date" value="${n.dataPagamento||todayISO()}"></div>
+      <div class="field" id="n_ctwrap" style="${n.status==="paga"?"":"display:none"}"><label>Recebido na conta</label><select id="n_ct">${[...new Set([...state.contas,n.conta||"Polis"])].map(c=>`<option ${c===(n.conta||"Polis")?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
     </div>
     <div id="n_info"></div>
     <div id="n_rateio"></div>
@@ -1365,6 +1452,7 @@ function saveNota(){
   n.descricao=document.getElementById("n_desc").value.trim();
   n.status=document.getElementById("n_st").value;
   n.dataPagamento=n.status==="paga"?document.getElementById("n_dpg").value:"";
+  if(n.status==="paga") n.conta=document.getElementById("n_ct").value;
   n.obs=document.getElementById("n_obs").value.trim();
   const r={}; modal.querySelectorAll(".rv").forEach(i=>{ const x=parseMoney(i.value); if(x) r[i.dataset.id]=x; });
   if(sum(Object.values(r),x=>x)-n.valor>EPS){ toast("O rateio por disciplina passa do valor da nota"); return; }
@@ -1411,6 +1499,719 @@ function loadExample(){
   state.fileId=fid; touch(); render(); toast("Exemplo carregado — para começar de verdade, use \"Apagar todos os dados\" em Configurações");
 }
 
+const D=()=>state.despesas;
+const catById=id=>D().categorias.find(c=>c.id===id);
+const grpById=id=>D().grupos.find(g=>g.id===id);
+const catNome=id=>(catById(id)||{nome:"(categoria excluída)"}).nome;
+const grpDaCat=id=>(catById(id)||{}).grupoId;
+const ymNow=()=>todayISO().slice(0,7);
+const anoNow=()=>todayISO().slice(0,4);
+const addMes=(ym,k)=>{ let [y,m]=ym.split("-").map(Number); m+=k; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return `${y}-${String(m).padStart(2,"0")}`; };
+const MC=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const mesCurto=ym=>{ const [y,m]=ym.split("-"); return `${MC[+m-1]}/${y.slice(2)}`; };
+const catsOrdenadas=()=>D().grupos.flatMap(g=>D().categorias.filter(c=>c.grupoId===g.id));
+function gradeReal(ano){ const m={}; D().lancamentos.forEach(l=>{ if(!l.data.startsWith(ano)) return; const i=+l.data.slice(5,7)-1; (m[l.categoriaId]=m[l.categoriaId]||Array(12).fill(0))[i]+=l.valor; }); return m; }
+const planCat=(ano,cid)=>((D().planejado[ano]||{})[cid])||Array(12).fill(0);
+function ultimoMesReal(ano){ let u=-1; D().lancamentos.forEach(l=>{ if(l.data.startsWith(ano)) u=Math.max(u,+l.data.slice(5,7)-1); }); return u; }
+const anosDesp=()=>[...new Set([anoNow(),...D().lancamentos.map(l=>l.data.slice(0,4)),...Object.keys(D().planejado)])].filter(Boolean).sort().reverse();
+const despMes=ym=>sum(D().lancamentos.filter(l=>l.data.startsWith(ym)),l=>l.valor);
+const planMes=(ano,mi)=>sum(D().categorias,c=>planCat(ano,c.id)[mi]);
+/* fixa já lançada no mês: pelo vínculo ou, para lançamentos antigos/importados, pela mesma categoria e descrição */
+const baseDesc=d=>norm(String(d).replace(/ \(\d+\/\d+\)$/,""));
+const fixaFeita=(f,lm)=>lm.find(l=>l.fixaId===f.id||(!l.fixaId&&l.categoriaId===f.categoriaId&&baseDesc(l.descricao)===baseDesc(f.descricao)));
+const reembPend=()=>D().lancamentos.filter(l=>l.reembolso==="pendente");
+const saldoEmp=e=>e.valor-sum(e.pagamentos,p=>p.valor);
+function catOptions(sel,soAtivas=true){
+  return D().grupos.map(g=>{ const cs=D().categorias.filter(c=>c.grupoId===g.id&&(!soAtivas||c.ativa||c.id===sel));
+    return cs.length?`<optgroup label="${esc(g.nome)}">${cs.map(c=>`<option value="${c.id}" ${c.id===sel?"selected":""}>${esc(c.nome)}</option>`).join("")}</optgroup>`:""; }).join("");
+}
+const reembBadge=l=>l.pagoPor==="Polis"||!l.reembolso?"":l.reembolso==="pendente"?`<span class="badge b-warn">reembolso pendente</span>`:`<span class="badge b-ok">reembolsado${l.dataReembolso?" "+fdate(l.dataReembolso):""}</span>`;
+const sel=(v,arr,vazio)=>(vazio!==undefined?`<option value="">${vazio}</option>`:"")+arr.map(([k,t])=>`<option value="${esc(k)}" ${String(v)===String(k)?"selected":""}>${esc(t)}</option>`).join("");
+function navMes(ym,fn){ return `<div class="mesnav"><button class="btn sm" onclick="${fn}('${addMes(ym,-1)}')" aria-label="Mês anterior">‹</button><b>${mesNome(ym)}</b><button class="btn sm" onclick="${fn}('${addMes(ym,1)}')" aria-label="Próximo mês">›</button>${ym!==ymNow()?`<button class="btn sm link" onclick="${fn}('${ymNow()}')">ir para hoje</button>`:""}</div>`; }
+function barra(v,max,cls=""){ const p=max>0?Math.min(100,v/max*100):0; return `<div class="bar ${cls}"><i class="pg" style="width:${p}%"></i></div>`; }
+
+/* ================= DESPESAS: painel ================= */
+let dMes=ymNow();
+function setDMes(ym){ dMes=ym; renderDPainel(); }
+function renderDPainel(){
+  const el=$("panel-dpainel"), ano=dMes.slice(0,4), mi=+dMes.slice(5,7)-1;
+  const lm=D().lancamentos.filter(l=>l.data.startsWith(dMes));
+  const real=sum(lm,l=>l.valor), plan=planMes(ano,mi), dif=plan-real;
+  const realAno=sum(D().lancamentos.filter(l=>l.data.startsWith(ano)&&+l.data.slice(5,7)-1<=mi),l=>l.valor);
+  const planAno=sum(Array.from({length:mi+1},(_,i)=>i),i=>planMes(ano,i));
+  const rp=reembPend();
+  const fixas=D().fixas.filter(f=>f.ativa), feitas=fixas.filter(f=>fixaFeita(f,lm));
+  const pend=fixas.filter(f=>!feitas.includes(f));
+  const t=D().teto, tc=t.categoriaId&&t.valor?sum(lm.filter(l=>l.categoriaId===t.categoriaId),l=>l.valor):0;
+  const grupos=D().grupos.map(g=>{ const cs=D().categorias.filter(c=>c.grupoId===g.id).map(c=>c.id);
+    return {g,r:sum(lm.filter(l=>cs.includes(l.categoriaId)),l=>l.valor),p:sum(cs,c=>planCat(ano,c)[mi])}; });
+  const emps=D().emprestimos.filter(e=>saldoEmp(e)>EPS&&!e.pagamentos.some(p=>p.data.startsWith(dMes)));
+  const vazio=!D().lancamentos.length;
+  el.innerHTML=`
+  ${vazio?`<div class="card setup"><div class="body"><h3>Nenhuma despesa lançada ainda</h3><p>Para trazer a planilha de 2026, clique em <b>Importar</b> e escolha o arquivo <span class="mono">despesas-2026.json</span>. Ou comece lançando as despesas em <b>Lançamentos</b>.</p>
+    <div class="row-actions" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" onclick="$('fileInput').click()">Importar despesas</button><button class="btn" onclick="openLanc({})">Novo lançamento</button></div></div></div>`:""}
+  <div class="toolbar" style="margin-bottom:14px;justify-content:space-between">${navMes(dMes,"setDMes")}
+    <div class="row-actions"><button class="btn primary" onclick="openLanc({})">Novo lançamento</button></div></div>
+  <div class="strip">
+    <div class="chip hl"><span class="k">Gasto no mês</span><span class="v">${brl(real)}</span><span class="u">${lm.length} lançamento(s)</span></div>
+    <div class="chip"><span class="k">Planejado no mês</span><span class="v">${brl(plan)}</span><span class="u">${plan?pctFmt(real/plan*100)+"% utilizado":"sem planejamento"}</span></div>
+    <div class="chip ${dif<-EPS?"bad":"good"}"><span class="k">${dif<-EPS?"Acima do planejado":"Abaixo do planejado"}</span><span class="v">${brl(Math.abs(dif))}</span><span class="u">planejado − real${dMes===ymNow()?" · mês em andamento":""}</span></div>
+    <div class="chip"><span class="k">No ano até ${MC[mi]}</span><span class="v">${brl(realAno)}</span><span class="u">planejado ${brl(planAno)}</span></div>
+    <div class="chip warn"><span class="k">Reembolsos pendentes</span><span class="v">${brl(sum(rp,l=>l.valor))}</span><span class="u">${rp.length} lançamento(s)</span></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="card"><header><div><h3>Despesas fixas de ${mesNome(dMes)}</h3><p class="hint">${feitas.length} de ${fixas.length} lançadas</p></div>
+        ${pend.length?`<button class="btn sm primary" onclick="openFixas('${dMes}')">Lançar ${pend.length} pendente(s)</button>`:""}</header>
+        ${fixas.length?`<div class="body" style="padding-top:8px">${barra(feitas.length,fixas.length)}
+          <div class="fixlist">${fixas.map(f=>{ const l=fixaFeita(f,lm); return `<div class="fixrow ${l?"ok":""}"><span>${l?"✓":"○"}</span><span>${esc(f.descricao)}${baseDesc(f.descricao)!==baseDesc(catNome(f.categoriaId))?`<small>${esc(catNome(f.categoriaId))}</small>`:""}</span><span class="num">${l?brl(l.valor):"<span class='muted'>"+brl(f.valor)+"</span>"}</span></div>`; }).join("")}</div></div>`
+          :`<div class="empty">Cadastre as despesas que se repetem todo mês (salários, aluguel, INSS…) em <a href="#" onclick="showTab('dconfig');return false">Categorias e fixas</a>.</div>`}</div>
+      ${emps.length?`<div class="card"><header><h3>Descontos de empréstimo deste mês</h3></header><div class="body">${emps.map(e=>`<div class="fixrow"><span>○</span><span>${esc(e.pessoa)} · ${esc(e.descricao)}<small>saldo ${brl(saldoEmp(e))}</small></span><button class="btn sm" onclick="addPagEmp('${e.id}',true)">Registrar ${brl(Math.min(e.parcela||saldoEmp(e),saldoEmp(e)))}</button></div>`).join("")}</div></div>`:""}
+    </div>
+    <div>
+      ${t.categoriaId&&t.valor?`<div class="card"><header><div><h3>Teto de ${esc(catNome(t.categoriaId)).toLowerCase()}</h3><p class="hint">${brl(tc)} de ${brl(t.valor)} no mês</p></div><span class="badge ${tc>t.valor+EPS?"b-red":tc>t.valor*0.8?"b-warn":"b-ok"}">${tc>t.valor+EPS?"estourou "+brl(tc-t.valor):"disponível "+brl(t.valor-tc)}</span></header>
+        <div class="body" style="padding-top:8px">${barra(tc,t.valor,tc>t.valor+EPS?"over":"")}</div></div>`:""}
+      <div class="card"><header><h3>Por grupo no mês</h3></header><div class="tablewrap"><table><thead><tr><th>Grupo</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Diferença</th><th style="width:22%"></th></tr></thead><tbody>
+        ${grupos.map(x=>`<tr class="click" onclick="fL=Object.assign(fLvazio(),{ano:'${ano}',mes:'${dMes.slice(5)}',grupo:'${x.g.id}'});showTab('dlanc')"><td>${esc(x.g.nome)}</td><td class="r num">${x.p?brl(x.p):"—"}</td><td class="r num">${x.r?brl(x.r):"—"}</td>
+          <td class="r num ${x.p-x.r<-EPS?"neg":""}">${x.p||x.r?brl(x.p-x.r):""}</td><td>${x.p?barra(x.r,x.p,x.r>x.p+EPS?"over":""):""}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Total</td><td class="r num">${brl(plan)}</td><td class="r num">${brl(real)}</td><td class="r num ${dif<-EPS?"neg":""}">${brl(dif)}</td><td></td></tr></tfoot></table></div></div>
+      ${rp.length?`<div class="card"><header><h3>Reembolsos pendentes</h3></header><div class="tablewrap"><table><tbody>${rp.map(l=>`<tr><td class="num">${fdate(l.data)}</td><td>${esc(l.descricao)}<div class="hint">pago por ${esc(l.pagoPor)}</div></td><td class="r num">${brl(l.valor)}</td><td><div class="row-actions"><button class="btn sm" onclick="marcarReemb('${l.id}')">Reembolsado</button></div></td></tr>`).join("")}</tbody></table></div></div>`:""}
+    </div>
+  </div>
+  <div class="card"><header><h3>Lançamentos de ${mesNome(dMes)}</h3><button class="btn sm" onclick="fL=Object.assign(fLvazio(),{ano:'${ano}',mes:'${dMes.slice(5)}'});showTab('dlanc')">Ver em Lançamentos</button></header>
+    ${tabelaLanc(lm.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,12))}</div>`;
+}
+function marcarReemb(id){ const l=D().lancamentos.find(x=>x.id===id); if(!l) return; l.reembolso="feito"; l.dataReembolso=todayISO(); touch(); render(); toast(`Reembolso de ${brl(l.valor)} a ${l.pagoPor} registrado`); }
+
+/* ================= DESPESAS: lançamentos ================= */
+const fLvazio=()=>({q:"",ano:anoNow(),mes:"",grupo:"",cat:"",pago:"",reemb:""});
+let fL=fLvazio();
+function tabelaLanc(ls,acoes=true){
+  if(!ls.length) return `<div class="empty">Nenhum lançamento.</div>`;
+  return `<div class="tablewrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Pago por</th><th class="r">Valor</th>${acoes?"<th></th>":""}</tr></thead><tbody>
+  ${ls.map(l=>`<tr><td class="num">${fdate(l.data)}</td><td>${esc(catNome(l.categoriaId))}<div class="hint">${esc((grpById(grpDaCat(l.categoriaId))||{}).nome||"")}</div></td>
+    <td>${esc(l.descricao)} ${reembBadge(l)}${l.obs&&!/^Importado do Excel$/.test(l.obs)?`<div class="hint">${esc(l.obs)}</div>`:""}</td><td>${esc(l.pagoPor)}</td><td class="r num">${brl(l.valor)}</td>
+    ${acoes?`<td><div class="row-actions">${l.reembolso==="pendente"?`<button class="btn sm" onclick="marcarReemb('${l.id}')">Reembolsado</button>`:""}<button class="btn sm" onclick="openLanc({copia:'${l.id}'})" title="Lançar outro igual">Duplicar</button><button class="btn sm" onclick="openLanc({id:'${l.id}'})">Editar</button></div></td>`:""}</tr>`).join("")}
+  </tbody><tfoot><tr><td colspan="4">${ls.length} lançamento(s)</td><td class="r num">${brl(sum(ls,l=>l.valor))}</td>${acoes?"<td></td>":""}</tr></tfoot></table></div>`;
+}
+function lancFiltrados(){
+  const q=norm(fL.q);
+  return D().lancamentos.filter(l=>(!fL.ano||l.data.startsWith(fL.ano))&&(!fL.mes||l.data.slice(5,7)===fL.mes)&&(!fL.grupo||grpDaCat(l.categoriaId)===fL.grupo)
+    &&(!fL.cat||l.categoriaId===fL.cat)&&(!fL.pago||l.pagoPor===fL.pago)&&(!fL.reemb||l.reembolso===fL.reemb)
+    &&(!q||norm(l.descricao+" "+l.obs+" "+catNome(l.categoriaId)+" "+l.pagoPor).includes(q)))
+    .sort((a,b)=>b.data.localeCompare(a.data)||catNome(a.categoriaId).localeCompare(catNome(b.categoriaId),"pt-BR"));
+}
+function renderDLanc(){
+  const el=$("panel-dlanc"), ls=lancFiltrados();
+  const pessoas=[...new Set([...D().pessoas,...D().lancamentos.map(l=>l.pagoPor)])];
+  const catsF=D().categorias.filter(c=>!fL.grupo||c.grupoId===fL.grupo);
+  el.innerHTML=`<div class="card"><header style="flex-direction:column;align-items:stretch;gap:10px">
+    <div class="toolbar"><input class="inp" style="flex:1" placeholder="Buscar descrição, categoria, pessoa" value="${esc(fL.q)}" oninput="fL.q=this.value;renderDLanc();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+      <div class="row-actions"><button class="btn sm" onclick="exportLancCsv()">Exportar (Excel)</button><button class="btn sm primary" onclick="openLanc({})">Novo lançamento</button></div></div>
+    <div class="toolbar">
+      <select class="inp" onchange="fL.ano=this.value;renderDLanc()">${sel(fL.ano,anosDesp().map(a=>[a,a]),"Todos os anos")}</select>
+      <select class="inp" onchange="fL.mes=this.value;renderDLanc()">${sel(fL.mes,MESES.map((m,i)=>[String(i+1).padStart(2,"0"),m]),"Todos os meses")}</select>
+      <select class="inp" onchange="fL.grupo=this.value;fL.cat='';renderDLanc()">${sel(fL.grupo,D().grupos.map(g=>[g.id,g.nome]),"Todos os grupos")}</select>
+      <select class="inp" onchange="fL.cat=this.value;renderDLanc()">${sel(fL.cat,catsF.map(c=>[c.id,c.nome]),"Todas as categorias")}</select>
+      <select class="inp" onchange="fL.pago=this.value;renderDLanc()">${sel(fL.pago,pessoas.map(p=>[p,p]),"Pago por: todos")}</select>
+      <select class="inp" onchange="fL.reemb=this.value;renderDLanc()">${sel(fL.reemb,[["pendente","Reembolso pendente"],["feito","Reembolsado"]],"Reembolso: todos")}</select>
+      ${JSON.stringify(fL)!==JSON.stringify(fLvazio())?`<button class="btn sm link" onclick="fL=fLvazio();renderDLanc()">limpar filtros</button>`:""}
+    </div></header>${tabelaLanc(ls)}</div>`;
+}
+function exportLancCsv(){
+  const rows=[["Data","Grupo","Categoria","Descrição","Pago por","Reembolso","Data reembolso","Valor","Observações"]];
+  lancFiltrados().slice().reverse().forEach(l=>rows.push([fdate(l.data),(grpById(grpDaCat(l.categoriaId))||{}).nome||"",catNome(l.categoriaId),l.descricao,l.pagoPor,
+    {pendente:"Pendente",feito:"Reembolsado"}[l.reembolso]||"",l.dataReembolso?fdate(l.dataReembolso):"",nf2(l.valor),l.obs]));
+  downloadCsv(`despesas_${todayISO()}.csv`,rows);
+}
+let lDraft=null;
+function openLanc({id,copia,preset}){
+  const base=id?D().lancamentos.find(x=>x.id===id):copia?D().lancamentos.find(x=>x.id===copia):null;
+  const l=base?clone(base):{data:todayISO(),categoriaId:"",descricao:"",valor:0,pagoPor:"Polis",reembolso:"",dataReembolso:"",obs:"",fixaId:""};
+  if(copia){ l.id=undefined; l.data=todayISO(); l.fixaId=""; if(l.pagoPor!=="Polis"){ l.reembolso="pendente"; l.dataReembolso=""; } l.obs=""; }
+  if(preset) Object.assign(l,preset);
+  lDraft={l,isNew:!id};
+  const pessoas=[...new Set([...D().pessoas,l.pagoPor])];
+  const descs=[...new Set(D().lancamentos.map(x=>x.descricao.replace(/ \(\d+\/\d+\)$/,"")))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  openModal(`<header><h3>${id?"Editar lançamento":"Novo lançamento de despesa"}</h3><button class="xbtn" onclick="closeModal()" aria-label="Fechar">×</button></header>
+  <div class="body">
+    <div class="fgrid">
+      <div class="field"><label>Data do pagamento</label><input id="l_data" type="date" value="${l.data}"></div>
+      <div class="field"><label>Valor (R$)</label><input id="l_val" class="money" inputmode="decimal" value="${mv(l.valor)}" placeholder="0,00"></div>
+      <div class="field"><label>Categoria</label><select id="l_cat"><option value="">Selecione…</option>${catOptions(l.categoriaId)}</select></div>
+    </div>
+    <div class="field"><label>Descrição</label><input id="l_desc" list="l_descs" value="${esc(l.descricao)}" placeholder="ex.: Notebook, salário de outubro, conta de luz" oninput="lSugCat(this.value)">
+      <datalist id="l_descs">${descs.map(d=>`<option value="${esc(d)}">`).join("")}</datalist></div>
+    <div class="fgrid">
+      <div class="field"><label>Pago por</label><select id="l_pago" onchange="lPagoChange()">${pessoas.map(p=>`<option ${p===l.pagoPor?"selected":""}>${esc(p)}</option>`).join("")}<option value="__nova">+ Outra pessoa…</option></select></div>
+      <div class="field" id="l_rw" style="${l.pagoPor==="Polis"?"display:none":""}"><label>Reembolso</label><select id="l_reemb" onchange="$('l_drw').style.display=this.value==='feito'?'':'none'">
+        <option value="pendente" ${l.reembolso!=="feito"?"selected":""}>Pendente</option><option value="feito" ${l.reembolso==="feito"?"selected":""}>Já reembolsado</option></select></div>
+      <div class="field" id="l_drw" style="${l.pagoPor!=="Polis"&&l.reembolso==="feito"?"":"display:none"}"><label>Data do reembolso</label><input id="l_drb" type="date" value="${l.dataReembolso||todayISO()}"></div>
+    </div>
+    <div class="field"><label>Observações</label><textarea id="l_obs">${esc(l.obs)}</textarea></div>
+  </div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="delLanc('${id}')">Excluir</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button>${id?"":`<button class="btn" onclick="saveLanc(true)">Salvar e lançar outro</button>`}<button class="btn primary" onclick="saveLanc(false)">Salvar</button></footer>`);
+  setTimeout(()=>$(base&&!copia?"l_val":"l_val").focus(),40);
+}
+function lSugCat(desc){ /* descrição já usada antes: sugere a mesma categoria */
+  if($("l_cat").value) return;
+  const ant=D().lancamentos.filter(x=>norm(x.descricao.replace(/ \(\d+\/\d+\)$/,""))===norm(desc)).sort((a,b)=>b.data.localeCompare(a.data))[0];
+  if(ant){ $("l_cat").value=ant.categoriaId; if(ant.pagoPor!==$("l_pago").value&&D().pessoas.includes(ant.pagoPor)){ $("l_pago").value=ant.pagoPor; lPagoChange(); } }
+}
+function lPagoChange(){
+  const s=$("l_pago");
+  if(s.value==="__nova"){ const n=(prompt("Nome de quem pagou:")||"").trim(); if(n){ if(!D().pessoas.includes(n)) D().pessoas.push(n); s.insertAdjacentHTML("afterbegin",`<option>${esc(n)}</option>`); s.value=n; } else s.value="Polis"; }
+  $("l_rw").style.display=s.value==="Polis"?"none":""; $("l_drw").style.display=s.value!=="Polis"&&$("l_reemb").value==="feito"?"":"none";
+}
+function saveLanc(outro){
+  const l=lDraft.l;
+  l.data=$("l_data").value; l.valor=parseMoney($("l_val").value); l.categoriaId=$("l_cat").value; l.descricao=$("l_desc").value.trim();
+  if(!l.data){ toast("Informe a data"); return; } if(!(l.valor>0)){ toast("Informe o valor"); $("l_val").focus(); return; }
+  if(!l.categoriaId){ toast("Escolha a categoria"); $("l_cat").focus(); return; }
+  if(!l.descricao) l.descricao=catNome(l.categoriaId);
+  l.pagoPor=$("l_pago").value==="__nova"?"Polis":$("l_pago").value;
+  l.reembolso=l.pagoPor==="Polis"?"":$("l_reemb").value; l.dataReembolso=l.reembolso==="feito"?$("l_drb").value:"";
+  l.obs=$("l_obs").value.trim();
+  if(lDraft.isNew){ l.id=uid(); D().lancamentos.push(l); } else { const i=D().lancamentos.findIndex(x=>x.id===l.id); D().lancamentos[i]=l; }
+  touch(); closeModal(); render();
+  toast(`${lDraft.isNew?"Lançado":"Atualizado"}: ${l.descricao} · ${brl(l.valor)}`);
+  if(outro) openLanc({preset:{data:l.data,categoriaId:l.categoriaId,pagoPor:l.pagoPor,reembolso:l.pagoPor==="Polis"?"":"pendente"}});
+}
+function delLanc(id){ if(!confirm("Excluir este lançamento?")) return; D().lancamentos=D().lancamentos.filter(x=>x.id!==id); touch(); closeModal(); render(); toast("Lançamento excluído"); }
+
+/* ---- despesas fixas do mês ---- */
+function openFixas(ym){
+  const lm=D().lancamentos.filter(l=>l.data.startsWith(ym));
+  const pend=D().fixas.filter(f=>f.ativa&&!fixaFeita(f,lm));
+  if(!pend.length){ toast("Todas as despesas fixas deste mês já foram lançadas"); return; }
+  const ult=f=>{ const x=D().lancamentos.filter(l=>l.fixaId===f.id).sort((a,b)=>b.data.localeCompare(a.data))[0]; return x?x.valor:f.valor; };
+  const dataPadrao=ym===ymNow()?todayISO():ym+"-05";
+  openModal(`<header><h3>Lançar despesas fixas · ${mesNome(ym)}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><p class="hint" style="margin:0 0 10px">Confira os valores (vêm do último lançamento de cada uma) e desmarque o que não foi pago neste mês.</p>
+    <div class="field" style="max-width:220px"><label>Data dos pagamentos</label><input id="fx_data" type="date" value="${dataPadrao}"></div>
+    <div class="tablewrap"><table><thead><tr><th style="width:30px"><input type="checkbox" checked onchange="modal.querySelectorAll('.fxck').forEach(c=>c.checked=this.checked)"></th><th>Despesa</th><th>Categoria</th><th>Pago por</th><th class="r" style="width:150px">Valor (R$)</th></tr></thead><tbody>
+    ${pend.map(f=>`<tr><td><input type="checkbox" class="fxck" data-id="${f.id}" checked></td><td>${esc(f.descricao)}</td><td>${esc(catNome(f.categoriaId))}</td><td>${esc(f.pagoPor)}</td>
+      <td><input class="inp money fxv" data-id="${f.id}" inputmode="decimal" value="${mv(ult(f))}"></td></tr>`).join("")}</tbody></table></div></div>
+  <footer><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveFixas()">Lançar selecionadas</button></footer>`);
+}
+function saveFixas(){
+  const data=$("fx_data").value; if(!data){ toast("Informe a data"); return; }
+  let n=0, tot=0;
+  modal.querySelectorAll(".fxck:checked").forEach(c=>{ const f=D().fixas.find(x=>x.id===c.dataset.id), v=parseMoney(modal.querySelector(`.fxv[data-id="${f.id}"]`).value);
+    if(!(v>0)) return;
+    D().lancamentos.push({id:uid(),data,categoriaId:f.categoriaId,descricao:f.descricao,valor:v,pagoPor:f.pagoPor,reembolso:f.pagoPor==="Polis"?"":"pendente",dataReembolso:"",obs:"",fixaId:f.id}); n++; tot+=v; });
+  touch(); closeModal(); render(); toast(`${n} despesa(s) fixa(s) lançada(s) · ${brl(tot)}`);
+}
+
+/* ================= DESPESAS: grade do ano ================= */
+let fG={ano:anoNow(),modo:"real"};
+function gradeDados(ano,modo){
+  const R=gradeReal(ano), u=ultimoMesReal(ano);
+  return catsOrdenadas().map(c=>{ const r=R[c.id]||Array(12).fill(0), p=planCat(ano,c.id);
+    const v= modo==="real"?r: modo==="plan"?p: r.map((x,i)=>i<=u?p[i]-x:null);
+    return {c,v}; }).filter(x=>x.c.ativa||x.v.some(n=>n));
+}
+function renderDGrade(){
+  const el=$("panel-dgrade"), ano=fG.ano, u=ultimoMesReal(ano), linhas=gradeDados(ano,fG.modo);
+  const fmt=v=>v===null?"":Math.abs(v)<EPS?"<span class='muted'>–</span>":nf2(v);
+  const cls=v=>fG.modo==="var"&&v!==null&&v<-EPS?"neg":"";
+  const totalLinha=v=>v.reduce((a,x)=>a+(x||0),0);
+  let body="";
+  D().grupos.forEach(g=>{
+    const ls=linhas.filter(x=>x.c.grupoId===g.id); if(!ls.length) return;
+    const sub=Array.from({length:12},(_,i)=>fG.modo==="var"&&i>u?null:sum(ls,x=>x.v[i]||0));
+    body+=`<tr class="grp"><td>${esc(g.nome)}</td>${sub.map(v=>`<td class="r num ${cls(v)}">${fmt(v)}</td>`).join("")}<td class="r num ${cls(totalLinha(sub))}">${fmt(totalLinha(sub))}</td></tr>`;
+    body+=ls.map(x=>`<tr><td class="cat">${esc(x.c.nome)}</td>${x.v.map((v,i)=>`<td class="r num ${cls(v)} ${fG.modo==="real"&&v?"cellclick":""}" ${fG.modo==="real"&&v?`onclick="fL=Object.assign(fLvazio(),{ano:'${ano}',mes:'${String(i+1).padStart(2,"0")}',cat:'${x.c.id}'});showTab('dlanc')" title="Ver lançamentos"`:""}>${fmt(v)}</td>`).join("")}<td class="r num ${cls(totalLinha(x.v))}"><b>${fmt(totalLinha(x.v))}</b></td></tr>`).join("");
+  });
+  const tot=Array.from({length:12},(_,i)=>fG.modo==="var"&&i>u?null:sum(linhas,x=>x.v[i]||0));
+  /* análise acumulada (como a aba Análise de despesas) */
+  const ate=Math.max(u,0), R=gradeReal(ano);
+  const an=D().grupos.map(g=>{ const cs=D().categorias.filter(c=>c.grupoId===g.id);
+    const p=sum(cs,c=>sum(planCat(ano,c.id).slice(0,ate+1),x=>x)), r=sum(cs,c=>sum((R[c.id]||[]).slice(0,ate+1),x=>x)); return {g,p,r}; });
+  el.innerHTML=`<div class="card"><header>
+      <div class="toolbar"><select class="inp" onchange="fG.ano=this.value;renderDGrade()">${sel(ano,anosDesp().map(a=>[a,a]))}</select>
+        <div class="seg">${[["real","Real"],["plan","Planejado"],["var","Variação"]].map(([k,t])=>`<button class="${fG.modo===k?"on":""}" onclick="fG.modo='${k}';renderDGrade()">${t}</button>`).join("")}</div></div>
+      <div class="row-actions"><button class="btn sm" onclick="gradeCsv()">Exportar (Excel)</button>${fG.modo==="plan"?`<button class="btn sm primary" onclick="showTab('dplan')">Editar planejamento</button>`:""}</div></header>
+    <div class="body" style="padding:10px 16px 0"><p class="hint" style="margin:0">${fG.modo==="real"?"Soma dos lançamentos de cada categoria por mês. Clique num valor para ver os lançamentos que o compõem.":fG.modo==="plan"?"Orçamento do ano. Para alterar, use a aba Planejamento.":`Planejado − real, até ${u>=0?MESES[u]:"o último mês com lançamentos"}. <b class="neg">Valores negativos</b> = gasto acima do planejado.`}</p></div>
+    <div class="tablewrap"><table class="grade"><thead><tr><th>${fG.modo==="real"?"Despesas reais":fG.modo==="plan"?"Despesas planejadas":"Variação"} ${ano}</th>${MC.map(m=>`<th class="r">${m}</th>`).join("")}<th class="r">Total</th></tr></thead>
+    <tbody>${body||`<tr><td colspan="14" class="empty">Nada lançado em ${ano}.</td></tr>`}</tbody>
+    <tfoot><tr><td>Total mensal</td>${tot.map(v=>`<td class="r num ${cls(v)}">${fmt(v)}</td>`).join("")}<td class="r num ${cls(totalLinha(tot))}">${fmt(totalLinha(tot))}</td></tr></tfoot></table></div></div>
+  <div class="card"><header><div><h3>Planejado × real acumulado</h3><p class="hint">${u>=0?`De janeiro a ${MESES[ate]} de ${ano} (último mês com lançamentos)`:"Sem lançamentos no ano"}</p></div></header>
+    <div class="tablewrap"><table><thead><tr><th>Grupo</th><th class="r">Planejado</th><th class="r">Real</th><th class="r">Variação</th><th class="r">Variação %</th><th style="width:22%">Real / planejado</th></tr></thead><tbody>
+    ${an.map(x=>`<tr><td>${esc(x.g.nome)}</td><td class="r num">${brl(x.p)}</td><td class="r num">${brl(x.r)}</td><td class="r num ${x.p-x.r<-EPS?"neg":""}">${brl(x.p-x.r)}</td><td class="r num ${x.p-x.r<-EPS?"neg":""}">${x.p?pctFmt((x.p-x.r)/x.p*100)+"%":"—"}</td><td>${x.p?barra(x.r,x.p,x.r>x.p+EPS?"over":""):""}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>Total</td><td class="r num">${brl(sum(an,x=>x.p))}</td><td class="r num">${brl(sum(an,x=>x.r))}</td><td class="r num ${sum(an,x=>x.p-x.r)<-EPS?"neg":""}">${brl(sum(an,x=>x.p-x.r))}</td><td class="r num ${sum(an,x=>x.p-x.r)<-EPS?"neg":""}">${sum(an,x=>x.p)?pctFmt(sum(an,x=>x.p-x.r)/sum(an,x=>x.p)*100)+"%":""}</td><td></td></tr></tfoot></table></div></div>`;
+}
+function gradeCsv(){
+  const ano=fG.ano, rows=[[`${{real:"Despesas reais",plan:"Despesas planejadas",var:"Variação (planejado - real)"}[fG.modo]} ${ano}`],["Grupo","Categoria",...MESES,"Total"]];
+  gradeDados(ano,fG.modo).forEach(x=>rows.push([(grpById(x.c.grupoId)||{}).nome,x.c.nome,...x.v.map(v=>v===null?"":nf2(v)),nf2(x.v.reduce((a,b)=>a+(b||0),0))]));
+  downloadCsv(`despesas-${fG.modo}-${ano}.csv`,rows);
+}
+
+/* ================= DESPESAS: planejamento ================= */
+let fP={ano:anoNow()};
+function renderDPlan(){
+  const el=$("panel-dplan"), ano=fP.ano, P=D().planejado[ano]||{};
+  const anos=[...new Set([...anosDesp(),String(+anoNow()+1)])].sort().reverse();
+  let body="";
+  D().grupos.forEach(g=>{
+    const cs=D().categorias.filter(c=>c.grupoId===g.id&&(c.ativa||(P[c.id]||[]).some(x=>x))); if(!cs.length) return;
+    body+=`<tr class="grp" data-g="${g.id}"><td>${esc(g.nome)}</td>${MC.map((_,i)=>`<td class="r num gsub" data-i="${i}"></td>`).join("")}<td class="r num gsub" data-i="t"></td><td></td></tr>`;
+    body+=cs.map(c=>`<tr data-c="${c.id}" data-gr="${g.id}"><td class="cat">${esc(c.nome)}</td>${Array.from({length:12},(_,i)=>`<td><input class="pinp money" inputmode="decimal" data-c="${c.id}" data-i="${i}" value="${mv((P[c.id]||[])[i])}" onchange="setPlan(this)" onkeydown="planNav(event,this)"></td>`).join("")}
+      <td class="r num ptot"></td><td><button class="btn sm" title="Repetir o valor de janeiro em todos os meses" onclick="repetirJan('${c.id}')">⇢</button></td></tr>`).join("");
+  });
+  el.innerHTML=`<div class="card"><header>
+    <div class="toolbar"><select class="inp" onchange="fP.ano=this.value;renderDPlan()">${sel(ano,anos.map(a=>[a,a]))}</select><span class="hint">Valores mensais esperados por categoria. Enter ou Tab passa para o próximo campo.</span></div>
+    <div class="row-actions"><button class="btn sm" onclick="copiarPlan('plan')">Copiar planejado de ${+ano-1}</button><button class="btn sm" onclick="copiarPlan('real')">Usar real de ${+ano-1} como base</button><button class="btn sm danger" onclick="limparPlan()">Limpar ${ano}</button></div></header>
+    <div class="tablewrap"><table class="grade plan"><thead><tr><th>Planejamento ${ano}</th>${MC.map(m=>`<th class="r">${m}</th>`).join("")}<th class="r">Total</th><th></th></tr></thead>
+    <tbody>${body}</tbody><tfoot><tr><td>Total mensal</td>${MC.map((_,i)=>`<td class="r num ftot" data-i="${i}"></td>`).join("")}<td class="r num ftot" data-i="t"></td><td></td></tr></tfoot></table></div></div>`;
+  updPlanTotais();
+}
+function setPlan(inp){
+  const ano=fP.ano, c=inp.dataset.c, i=+inp.dataset.i;
+  const P=D().planejado[ano]=D().planejado[ano]||{}; const a=P[c]=P[c]||Array(12).fill(0);
+  a[i]=parseMoney(inp.value); inp.value=mv(a[i]); touch(); updPlanTotais();
+}
+function planNav(e,inp){ if(e.key!=="Enter") return; e.preventDefault(); const all=[...document.querySelectorAll("#panel-dplan .pinp")]; const k=all.indexOf(inp); inp.dispatchEvent(new Event("change")); (all[k+1]||inp).focus(); }
+function updPlanTotais(){
+  const ano=fP.ano, P=D().planejado[ano]||{}, root=$("panel-dplan");
+  root.querySelectorAll("tr[data-c]").forEach(tr=>{ tr.querySelector(".ptot").textContent=nf2(sum(P[tr.dataset.c]||[],x=>x)); });
+  root.querySelectorAll("tr.grp").forEach(tr=>{ const cs=[...root.querySelectorAll(`tr[data-gr="${tr.dataset.g}"]`)].map(x=>x.dataset.c);
+    tr.querySelectorAll(".gsub").forEach(td=>{ const i=td.dataset.i; td.textContent=nf2(sum(cs,c=>i==="t"?sum(P[c]||[],x=>x):(P[c]||[])[+i]||0)); }); });
+  const cs=[...root.querySelectorAll("tr[data-c]")].map(x=>x.dataset.c);
+  root.querySelectorAll(".ftot").forEach(td=>{ const i=td.dataset.i; td.textContent=nf2(sum(cs,c=>i==="t"?sum(P[c]||[],x=>x):(P[c]||[])[+i]||0)); });
+}
+function repetirJan(cid){ const P=D().planejado[fP.ano]=D().planejado[fP.ano]||{}; const a=P[cid]=P[cid]||Array(12).fill(0); for(let i=1;i<12;i++) a[i]=a[0]; touch(); renderDPlan(); }
+function copiarPlan(fonte){
+  const ano=fP.ano, ant=String(+ano-1);
+  const src= fonte==="plan" ? D().planejado[ant]||{} : gradeReal(ant);
+  if(!Object.keys(src).length){ toast(`Não há ${fonte==="plan"?"planejamento":"lançamentos"} em ${ant}`); return; }
+  if(Object.values(D().planejado[ano]||{}).some(a=>a.some(x=>x))&&!confirm(`Substituir o planejamento de ${ano}?`)) return;
+  D().planejado[ano]=Object.fromEntries(Object.entries(src).map(([c,a])=>[c,a.map(x=>Math.round(x*100)/100)]));
+  touch(); renderDPlan(); toast(`Planejamento de ${ano} preenchido com o ${fonte==="plan"?"planejado":"real"} de ${ant}`);
+}
+function limparPlan(){ if(!confirm(`Apagar todo o planejamento de ${fP.ano}?`)) return; delete D().planejado[fP.ano]; touch(); renderDPlan(); }
+
+/* ================= DESPESAS: empréstimos ================= */
+function renderDEmp(){
+  const el=$("panel-demp"), es=D().emprestimos;
+  const card=e=>{ const pago=sum(e.pagamentos,p=>p.valor), saldo=e.valor-pago;
+    const ps=e.pagamentos.slice().sort((a,b)=>a.data.localeCompare(b.data)); let acc=e.valor;
+    const ultimo=ps.length?ps[ps.length-1].data.slice(0,7):(e.data||todayISO()).slice(0,7);
+    const nPar=e.parcela?Math.ceil(saldo/e.parcela-1e-9):0, quit=nPar>0?addMes(ultimo,nPar):"";
+    return `<div class="card"><header><div><h3 style="font-size:16px">${esc(e.pessoa)} · ${esc(e.descricao)}</h3><p class="hint">${[e.data&&"desde "+fdate(e.data),e.parcela&&"desconto de "+brl(e.parcela)+"/mês"].filter(Boolean).join(" · ")}</p></div>
+      <div class="row-actions"><button class="btn sm" onclick="openEmp('${e.id}')">Editar</button>${saldo>EPS?`<button class="btn sm primary" onclick="addPagEmp('${e.id}')">Registrar pagamento</button>`:""}</div></header>
+      <div class="body"><div class="strip" style="grid-template-columns:repeat(4,1fr)">
+        <div class="chip"><span class="k">Valor</span><span class="v">${brl(e.valor)}</span></div>
+        <div class="chip good"><span class="k">Pago</span><span class="v">${brl(pago)}</span><span class="u">${e.valor?pctFmt(pago/e.valor*100):0}% · ${ps.length} pagamento(s)</span></div>
+        <div class="chip hl"><span class="k">Saldo devedor</span><span class="v">${brl(saldo)}</span></div>
+        <div class="chip"><span class="k">Quitação prevista</span><span class="v" style="font-size:16px">${saldo<=EPS?"Quitado":quit?mesNome(quit):"—"}</span><span class="u">${nPar>0?nPar+" parcela(s) restante(s)":""}</span></div></div>
+        ${barra(pago,e.valor)}${e.obs?`<p class="hint" style="margin:10px 0 0">${esc(e.obs)}</p>`:""}</div>
+      <div class="tablewrap" style="max-height:340px;overflow:auto"><table><thead><tr><th>Data</th><th class="r">Pagamento</th><th class="r">Saldo</th><th>Obs.</th><th></th></tr></thead><tbody>
+      ${ps.map(p=>{ acc-=p.valor; return `<tr><td class="num">${fdate(p.data)}</td><td class="r num">${brl(p.valor)}</td><td class="r num">${brl(acc)}</td><td>${esc(p.obs)}</td><td><div class="row-actions"><button class="btn sm danger" onclick="delPagEmp('${e.id}','${p.id}')">Excluir</button></div></td></tr>`; }).reverse().join("")}
+      </tbody></table></div></div>`; };
+  el.innerHTML=`<div class="toolbar" style="justify-content:space-between;margin-bottom:14px"><p class="hint" style="margin:0">Valores que colaboradores devem à Polis e são abatidos aos poucos. Servem só para controlar o saldo — não entram nas entradas e saídas do caixa.</p>
+    <button class="btn primary" onclick="openEmp()">Novo empréstimo</button></div>
+    ${es.length?es.map(card).join(""):`<div class="card"><div class="empty">Nenhum empréstimo cadastrado.</div></div>`}`;
+}
+function openEmp(id){
+  const e=id?D().emprestimos.find(x=>x.id===id):{pessoa:"",descricao:"",data:todayISO(),valor:0,parcela:0,obs:""};
+  openModal(`<header><h3>${id?"Editar empréstimo":"Novo empréstimo"}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><div class="fgrid"><div class="field"><label>Pessoa</label><input id="e_p" value="${esc(e.pessoa)}"></div><div class="field"><label>Descrição</label><input id="e_d" value="${esc(e.descricao)}" placeholder="ex.: Carro HB20"></div></div>
+    <div class="fgrid"><div class="field"><label>Data</label><input id="e_dt" type="date" value="${e.data}"></div><div class="field"><label>Valor total (R$)</label><input id="e_v" class="money" value="${mv(e.valor)}"></div><div class="field"><label>Desconto mensal (R$)</label><input id="e_pa" class="money" value="${mv(e.parcela)}"></div></div>
+    <div class="field"><label>Observações</label><textarea id="e_o">${esc(e.obs)}</textarea></div></div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="if(confirm('Excluir este empréstimo e todos os pagamentos?')){D().emprestimos=D().emprestimos.filter(x=>x.id!=='${id}');touch();closeModal();render()}">Excluir</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveEmp(${id?`'${id}'`:"null"})">Salvar</button></footer>`);
+}
+function saveEmp(id){
+  const d={pessoa:$("e_p").value.trim(),descricao:$("e_d").value.trim(),data:$("e_dt").value,valor:parseMoney($("e_v").value),parcela:parseMoney($("e_pa").value),obs:$("e_o").value.trim()};
+  if(!d.pessoa||!(d.valor>0)){ toast("Informe a pessoa e o valor"); return; }
+  if(id) Object.assign(D().emprestimos.find(x=>x.id===id),d); else D().emprestimos.push({id:uid(),pagamentos:[],...d});
+  touch(); closeModal(); render();
+}
+function addPagEmp(id,direto){
+  const e=D().emprestimos.find(x=>x.id===id), saldo=saldoEmp(e), v0=Math.min(e.parcela||saldo,saldo);
+  if(direto){ e.pagamentos.push({id:uid(),data:todayISO(),valor:v0,obs:""}); touch(); render(); toast(`Pagamento de ${brl(v0)} registrado · saldo ${brl(saldoEmp(e))}`); return; }
+  openModal(`<header><h3>Pagamento · ${esc(e.pessoa)}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><div class="fgrid"><div class="field"><label>Data</label><input id="pe_d" type="date" value="${todayISO()}"></div><div class="field"><label>Valor (R$)</label><input id="pe_v" class="money" value="${mv(v0)}"></div></div>
+    <div class="field"><label>Observação</label><input id="pe_o" placeholder="ex.: desconto em folha, pagamento extra"></div><p class="hint">Saldo atual: ${brl(saldo)}</p></div>
+  <footer><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="savePagEmp('${id}')">Registrar</button></footer>`);
+}
+function savePagEmp(id){ const e=D().emprestimos.find(x=>x.id===id), v=parseMoney($("pe_v").value); if(!(v>0)){ toast("Informe o valor"); return; }
+  e.pagamentos.push({id:uid(),data:$("pe_d").value||todayISO(),valor:v,obs:$("pe_o").value.trim()}); touch(); closeModal(); render(); toast(`Saldo ${brl(saldoEmp(e))}`); }
+function delPagEmp(id,pid){ if(!confirm("Excluir este pagamento?")) return; const e=D().emprestimos.find(x=>x.id===id); e.pagamentos=e.pagamentos.filter(p=>p.id!==pid); touch(); render(); }
+
+/* ================= DESPESAS: categorias, fixas, pessoas, teto ================= */
+function renderDConfig(){
+  const el=$("panel-dconfig"), d=D();
+  const nL=cid=>d.lancamentos.filter(l=>l.categoriaId===cid).length;
+  const grupos=d.grupos.map((g,gi)=>`<div class="grpbox">
+    <div class="custom-row" style="grid-template-columns:1fr auto auto auto"><input class="inp" style="font-weight:650" value="${esc(g.nome)}" onchange="renGrupo('${g.id}',this.value)">
+      <button class="btn sm" ${gi===0?"disabled":""} onclick="movArr(D().grupos,${gi},-1)">↑</button><button class="btn sm" ${gi===d.grupos.length-1?"disabled":""} onclick="movArr(D().grupos,${gi},1)">↓</button>
+      <button class="btn sm danger" onclick="delGrupo('${g.id}')">Remover</button></div>
+    ${d.categorias.filter(c=>c.grupoId===g.id).map(c=>`<div class="custom-row catrow ${c.ativa?"":"off"}" style="grid-template-columns:1fr 170px auto auto">
+      <input class="inp" value="${esc(c.nome)}" onchange="renCat('${c.id}',this.value)">
+      <select class="inp" onchange="catById('${c.id}').grupoId=this.value;touch();renderDConfig()" title="Mover para outro grupo">${sel(c.grupoId,d.grupos.map(x=>[x.id,x.nome]))}</select>
+      <label class="hint" style="display:flex;gap:5px;align-items:center"><input type="checkbox" ${c.ativa?"checked":""} onchange="catById('${c.id}').ativa=this.checked;touch();renderDConfig()"> ativa</label>
+      <button class="btn sm danger" onclick="delCat('${c.id}')" title="${nL(c.id)} lançamento(s)">Remover</button></div>`).join("")}
+    <div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" id="nc_${g.id}" placeholder="Nova categoria em ${esc(g.nome)}" onkeydown="if(event.key==='Enter')addCat('${g.id}')"><button class="btn sm" onclick="addCat('${g.id}')">Adicionar</button></div></div>`).join("");
+  const fixas=d.fixas.map((f,i)=>`<div class="custom-row" style="grid-template-columns:1.3fr 1.2fr 110px 110px auto auto">
+      <input class="inp" value="${esc(f.descricao)}" onchange="D().fixas[${i}].descricao=this.value.trim();touch()">
+      <select class="inp" onchange="D().fixas[${i}].categoriaId=this.value;touch()">${catOptions(f.categoriaId)}</select>
+      <input class="inp money" value="${mv(f.valor)}" onchange="D().fixas[${i}].valor=parseMoney(this.value);this.value=mv(D().fixas[${i}].valor);touch()" title="Valor de referência">
+      <select class="inp" onchange="D().fixas[${i}].pagoPor=this.value;touch()">${sel(f.pagoPor,d.pessoas.map(p=>[p,p]))}</select>
+      <label class="hint" style="display:flex;gap:5px;align-items:center"><input type="checkbox" ${f.ativa?"checked":""} onchange="D().fixas[${i}].ativa=this.checked;touch()"> ativa</label>
+      <button class="btn sm danger" onclick="D().fixas.splice(${i},1);touch();renderDConfig()">Remover</button></div>`).join("");
+  el.innerHTML=`<div class="grid2" style="align-items:start">
+    <div class="card"><header><div><h3>Grupos e categorias</h3><p class="hint">Categorias desativadas somem das listas de lançamento, mas continuam nos relatórios.</p></div></header>
+      <div class="body">${grupos}<div class="custom-row" style="grid-template-columns:1fr auto;margin-top:6px"><input class="inp" id="ng" placeholder="Novo grupo" onkeydown="if(event.key==='Enter')addGrupo()"><button class="btn primary" onclick="addGrupo()">Adicionar grupo</button></div></div></div>
+    <div>
+      <div class="card"><header><div><h3>Despesas fixas</h3><p class="hint">Aparecem no painel para lançar todo mês com um clique. O valor é só referência: o app sugere o do último lançamento.</p></div></header>
+        <div class="body">${fixas||`<p class="hint">Nenhuma despesa fixa.</p>`}<button class="btn sm" style="margin-top:6px" onclick="D().fixas.push({id:uid(),categoriaId:(D().categorias[0]||{}).id||'',descricao:'Nova despesa fixa',valor:0,pagoPor:'Polis',ativa:true});touch();renderDConfig()">+ Despesa fixa</button></div></div>
+      <div class="card"><header><div><h3>Teto mensal</h3><p class="hint">Limite de gasto por mês para uma categoria, acompanhado no painel.</p></div></header>
+        <div class="body"><div class="fgrid"><div class="field"><label>Categoria</label><select onchange="D().teto.categoriaId=this.value;touch()"><option value="">Sem teto</option>${catOptions(d.teto.categoriaId)}</select></div>
+          <div class="field"><label>Valor por mês (R$)</label><input class="money" value="${mv(d.teto.valor)}" onchange="D().teto.valor=parseMoney(this.value);this.value=mv(D().teto.valor);touch()"></div></div></div></div>
+      <div class="card"><header><div><h3>Quem paga despesas</h3><p class="hint">Quando não é a Polis, o lançamento fica com reembolso pendente até ser marcado como reembolsado.</p></div></header>
+        <div class="body">${d.pessoas.map((p,i)=>`<div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" value="${esc(p)}" ${p==="Polis"?"disabled":""} onchange="renPessoa(${i},this.value)">${p==="Polis"?"<span></span>":`<button class="btn sm danger" onclick="D().pessoas.splice(${i},1);touch();renderDConfig()">Remover</button>`}</div>`).join("")}
+          <div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" id="np" placeholder="Nova pessoa" onkeydown="if(event.key==='Enter')addPessoa()"><button class="btn sm" onclick="addPessoa()">Adicionar</button></div></div></div>
+    </div></div>`;
+}
+function movArr(a,i,d){ [a[i],a[i+d]]=[a[i+d],a[i]]; touch(); render(); }
+function renGrupo(id,v){ if(v.trim()){ grpById(id).nome=v.trim(); touch(); } }
+function renCat(id,v){ if(v.trim()){ catById(id).nome=v.trim(); touch(); } }
+function addGrupo(){ const v=$("ng").value.trim(); if(!v) return; D().grupos.push({id:uid(),nome:v}); touch(); renderDConfig(); }
+function delGrupo(id){ if(D().categorias.some(c=>c.grupoId===id)){ alert("Mova ou remova as categorias deste grupo antes."); return; } D().grupos=D().grupos.filter(g=>g.id!==id); touch(); renderDConfig(); }
+function addCat(gid){ const v=$("nc_"+gid).value.trim(); if(!v) return; D().categorias.push({id:uid(),grupoId:gid,nome:v,ativa:true}); touch(); renderDConfig(); }
+function delCat(id){
+  const n=D().lancamentos.filter(l=>l.categoriaId===id).length;
+  if(n){ alert(`Esta categoria tem ${n} lançamento(s). Desmarque "ativa" para escondê-la sem perder o histórico.`); return; }
+  if(!confirm("Remover esta categoria?")) return;
+  D().categorias=D().categorias.filter(c=>c.id!==id); Object.values(D().planejado).forEach(p=>delete p[id]); touch(); renderDConfig();
+}
+function addPessoa(){ const v=$("np").value.trim(); if(!v||D().pessoas.includes(v)) return; D().pessoas.push(v); touch(); renderDConfig(); }
+function renPessoa(i,v){ v=v.trim(); if(!v) return renderDConfig(); const old=D().pessoas[i]; D().pessoas[i]=v;
+  D().lancamentos.forEach(l=>{ if(l.pagoPor===old) l.pagoPor=v; }); D().fixas.forEach(f=>{ if(f.pagoPor===old) f.pagoPor=v; }); touch(); }
+
+/* ---- importar despesas convertidas do Excel ---- */
+async function importarDespesas(o){
+  const n=D().lancamentos.length;
+  if(n&&!confirm(`Substituir as despesas atuais (${n} lançamento(s)) pelas do arquivo (${(o.lancamentos||[]).length} lançamento(s))? Os recebimentos não são alterados. Uma cópia vai para backups.`)) return;
+  await fsBackupNow("antes-de-importar-despesas");
+  const {tipo,versao,origem,...dados}=o; state.despesas=migrateDesp(dados);
+  touch(); setMode("desp"); showTab("dpainel");
+  toast(`Despesas importadas: ${D().lancamentos.length} lançamentos, ${D().categorias.length} categorias, ${D().emprestimos.length} empréstimo(s)`);
+}
+
+/* ================= FINANCEIRO: base de cálculo =================
+   Regime de caixa: entrada = nota fiscal paga (data do pagamento); saída = despesa lançada (data do pagamento).
+   Empréstimos a colaboradores não entram (só controle de saldo). */
+const C_ENT="#5145B8", C_SAI="#C8691C";
+function fluxoMensal(){
+  const ent={}, sai={}, saiG={};
+  recebimentos().forEach(r=>{ const m=r.data.slice(0,7); ent[m]=(ent[m]||0)+r.valor; });
+  D().lancamentos.forEach(l=>{ const m=l.data.slice(0,7), g=grpDaCat(l.categoriaId)||"?"; sai[m]=(sai[m]||0)+l.valor; (saiG[m]=saiG[m]||{})[g]=(saiG[m][g]||0)+l.valor; });
+  return {ent,sai,saiG};
+}
+const anosFin=()=>{ const F=fluxoMensal(); return [...new Set([anoNow(),...Object.keys(F.ent),...Object.keys(F.sai)].map(x=>x.slice(0,4)))].sort().reverse(); };
+function mesesDe(sel){ if(sel==="12m"){ const r=[]; for(let i=11;i>=0;i--) r.push(addMes(ymNow(),-i)); return r; } return Array.from({length:12},(_,i)=>`${sel}-${String(i+1).padStart(2,"0")}`); }
+function chavePer(ym,g){ const [y,m]=ym.split("-").map(Number); return g==="mes"?ym:g==="tri"?`${y}-T${Math.ceil(m/3)}`:g==="sem"?`${y}-S${m<=6?1:2}`:String(y); }
+function nomePer(k){ if(/^\d{4}-\d{2}$/.test(k)) return mesCurto(k); const [y,p]=k.split("-"); if(!p) return y; return p[0]==="T"?`${p[1]}º tri ${y}`:`${p[1]}º sem ${y}`; }
+function agrupar(meses,g,F){ const out=new Map(); meses.forEach(m=>{ const k=chavePer(m,g); const o=out.get(k)||{k,ent:0,sai:0,meses:[]}; o.ent+=F.ent[m]||0; o.sai+=F.sai[m]||0; o.meses.push(m); out.set(k,o); }); return [...out.values()]; }
+function mediaFechada(F,campo,n){ const ms=Array.from({length:n},(_,i)=>addMes(ymNow(),-(i+1))); return sum(ms,m=>F[campo][m]||0)/n; }
+function prazoMedioRecebimento(){
+  const pg=state.notas.filter(n=>n.status==="paga"&&n.dataPagamento&&n.data);
+  if(pg.length<3) return {dias:30,base:0};
+  return {dias:Math.max(0,Math.round(sum(pg,n=>daysBetween(n.data,n.dataPagamento))/pg.length)),base:pg.length};
+}
+function chartEntSai(meses,F){
+  const W=1000,H=210,pl=46,pr=10,pb=30,pt=14, bw=(W-pl-pr)/meses.length;
+  const max=Math.max(1,...meses.map(m=>Math.max(F.ent[m]||0,F.sai[m]||0)));
+  const k=v=>v>=1e6?(v/1e6).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mi":v>=1e3?(v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:0})+" mil":v?v.toFixed(0):"0";
+  const ticks=[0,0.5,1].map(f=>max*f);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entradas e saídas por mês">`;
+  ticks.forEach(t=>{ const y=H-pb-(t/max)*(H-pb-pt); s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#E6E4F1"/><text x="${pl-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#625E80">${k(t)}</text>`; });
+  meses.forEach((m,i)=>{
+    const x0=pl+i*bw, w=Math.min(26,bw*0.32), gap=2, cx=x0+bw/2;
+    [[F.ent[m]||0,C_ENT,"Entradas",cx-w-gap/2],[F.sai[m]||0,C_SAI,"Saídas",cx+gap/2]].forEach(([v,c,t,x])=>{
+      const h=(v/max)*(H-pb-pt), y=H-pb-h;
+      if(h>0) s+=`<path d="M${x},${H-pb}V${y+Math.min(4,h)}Q${x},${y} ${x+Math.min(4,h)},${y}H${x+w-Math.min(4,h)}Q${x+w},${y} ${x+w},${y+Math.min(4,h)}V${H-pb}Z" fill="${c}"/>`;
+      s+=`<rect x="${x-3}" y="${pt}" width="${w+6}" height="${H-pb-pt}" fill="transparent"><title>${t} ${mesNome(m)}: ${brl(v)}</title></rect>`;
+    });
+    s+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle" font-size="12" fill="#625E80">${mesCurto(m)}</text>`;
+  });
+  s+=`<line x1="${pl}" x2="${W-pr}" y1="${H-pb}" y2="${H-pb}" stroke="#D5D2E6"/>`;
+  return s+"</svg>";
+}
+
+/* ================= FINANCEIRO: visão geral ================= */
+let fV={ano:anoNow(),g:"mes"};
+function renderFVisao(){
+  const el=$("panel-fvisao"), F=fluxoMensal();
+  const anos=anosFin();
+  const meses= fV.g==="ano" ? Object.keys({...F.ent,...F.sai}).sort() : mesesDe(fV.ano).filter(m=>m<=ymNow()||F.ent[m]||F.sai[m]);
+  const pers=agrupar(meses,fV.g,F);
+  const tE=sum(pers,p=>p.ent), tS=sum(pers,p=>p.sai), res=tE-tS;
+  const medS=mediaFechada(F,"sai",6), medE=mediaFechada(F,"ent",6);
+  const vivos=state.contratos.filter(c=>!c.encerrado), aReceber=sum(state.notas.filter(n=>n.status==="emitida"),n=>n.valor);
+  const saldoFat=sum(vivos,c=>Math.max(0,resumo(c).saldo)), carteira=aReceber+saldoFat;
+  const rp=sum(reembPend(),l=>l.valor), empS=sum(D().emprestimos,e=>Math.max(0,saldoEmp(e)));
+  let acc=0;
+  const linhas=pers.map(p=>{ acc+=p.ent-p.sai; return `<tr><td>${nomePer(p.k)}</td><td class="r num">${brl(p.ent)}</td><td class="r num">${brl(p.sai)}</td>
+    <td class="r num ${p.ent-p.sai<-EPS?"neg":"pos"}">${brl(p.ent-p.sai)}</td><td class="r num">${p.ent?pctFmt((p.ent-p.sai)/p.ent*100)+"%":"—"}</td><td class="r num ${acc<-EPS?"neg":""}">${brl(acc)}</td></tr>`; }).join("");
+  const grpTot=D().grupos.map(g=>({g,v:sum(meses,m=>((F.saiG[m]||{})[g.id])||0)})).filter(x=>x.v).sort((a,b)=>b.v-a.v);
+  const chartMeses= fV.g==="ano"||fV.ano==="12m" ? mesesDe("12m") : mesesDe(fV.ano);
+  el.innerHTML=`<div class="card no-print"><header>
+      <div class="toolbar">${fV.g==="ano"?`<span class="hint">Todos os anos com dados</span>`:`<select class="inp" onchange="fV.ano=this.value;renderFVisao()">${sel(fV.ano,[...anos.map(a=>[a,a]),["12m","Últimos 12 meses"]])}</select>`}
+        <div class="seg">${[["mes","Mensal"],["tri","Trimestral"],["sem","Semestral"],["ano","Anual"]].map(([k,t])=>`<button class="${fV.g===k?"on":""}" onclick="fV.g='${k}';renderFVisao()">${t}</button>`).join("")}</div></div>
+      <span class="hint">Entradas = notas fiscais pagas + entradas sem nota · Saídas = despesas lançadas</span></header></div>
+  <div class="strip">
+    <div class="chip"><span class="k">Entradas</span><span class="v" style="color:${C_ENT}">${brl(tE)}</span><span class="u">${fV.g==="ano"?"todos os anos":fV.ano==="12m"?"últimos 12 meses":"em "+fV.ano}</span></div>
+    <div class="chip"><span class="k">Saídas</span><span class="v" style="color:${C_SAI}">${brl(tS)}</span><span class="u">${tE?pctFmt(tS/tE*100)+"% das entradas":""}</span></div>
+    <div class="chip hl"><span class="k">Resultado</span><span class="v">${brl(res)}</span><span class="u">margem ${tE?pctFmt(res/tE*100)+"%":"—"}</span></div>
+    <div class="chip"><span class="k">Média mensal (6 meses fechados)</span><span class="v" style="font-size:16px">${brl(medE)} <small class="muted">entra</small></span><span class="u">${brl(medS)} sai · ${brl(medE-medS)} sobra</span></div>
+    <div class="chip ${medS&&carteira/medS<3?"warn":"good"}"><span class="k">Carteira cobre</span><span class="v">${medS?(carteira/medS).toLocaleString("pt-BR",{maximumFractionDigits:1})+" meses":"—"}</span><span class="u">de despesas · ${brl(carteira)} a receber + a faturar</span></div>
+  </div>
+  <div class="card"><header><h3>Entradas e saídas por mês</h3><div class="legend"><span style="--c:${C_ENT}">Entradas</span><span style="--c:${C_SAI}">Saídas</span></div></header>
+    <div class="body chart">${chartEntSai(chartMeses,F)}</div></div>
+  <div class="grid2" style="align-items:start">
+    <div class="card"><header><h3>Resultado por ${{mes:"mês",tri:"trimestre",sem:"semestre",ano:"ano"}[fV.g]}</h3><button class="btn sm no-print" onclick="visaoCsv()">Exportar (Excel)</button></header>
+      <div class="tablewrap"><table><thead><tr><th>Período</th><th class="r">Entradas</th><th class="r">Saídas</th><th class="r">Resultado</th><th class="r">Margem</th><th class="r">Acumulado</th></tr></thead>
+      <tbody>${linhas||`<tr><td colspan="6" class="empty">Sem dados.</td></tr>`}</tbody>
+      <tfoot><tr><td>Total</td><td class="r num">${brl(tE)}</td><td class="r num">${brl(tS)}</td><td class="r num">${brl(res)}</td><td class="r num">${tE?pctFmt(res/tE*100)+"%":""}</td><td></td></tr></tfoot></table></div></div>
+    <div>
+      <div class="card"><header><h3>Para onde foi o dinheiro</h3></header><div class="tablewrap"><table><thead><tr><th>Grupo de despesa</th><th class="r">Total</th><th class="r">% saídas</th><th class="r">% entradas</th></tr></thead><tbody>
+        ${grpTot.map(x=>`<tr><td>${esc(x.g.nome)}</td><td class="r num">${brl(x.v)}</td><td class="r num">${tS?pctFmt(x.v/tS*100)+"%":""}</td><td class="r num">${tE?pctFmt(x.v/tE*100)+"%":"—"}</td></tr>`).join("")||`<tr><td colspan="4" class="empty">Sem despesas no período.</td></tr>`}</tbody></table></div></div>
+      <div class="card"><header><h3>Posição hoje</h3></header><div class="body"><dl class="kv">
+        <dt>Notas emitidas a receber</dt><dd class="num">${brl(aReceber)}</dd>
+        <dt>Saldo a faturar dos contratos</dt><dd class="num">${brl(saldoFat)}</dd>
+        <dt>Reembolsos a pagar</dt><dd class="num">${brl(rp)}</dd>
+        <dt>Empréstimos a receber</dt><dd class="num">${brl(empS)}</dd></dl>
+        <p class="hint" style="margin:10px 0 0">Para cobrir a despesa média, a Polis precisa receber em média <b>${brl(medS)}</b> por mês.</p></div></div>
+    </div></div>`;
+  window._visaoPers=pers;
+}
+function visaoCsv(){ let acc=0; downloadCsv(`entradas-saidas_${todayISO()}.csv`,[["Período","Entradas","Saídas","Resultado","Margem","Acumulado"],
+  ...(window._visaoPers||[]).map(p=>{ acc+=p.ent-p.sai; return [nomePer(p.k),nf2(p.ent),nf2(p.sai),nf2(p.ent-p.sai),p.ent?pctFmt((p.ent-p.sai)/p.ent*100)+"%":"",nf2(acc)]; })]); }
+
+/* ================= FINANCEIRO: relatórios ================= */
+let fF={tipo:"dre",ano:anoNow(),g:"tri",meses:6,de:"",ate:"",ateMes:""};
+const RELF={
+  dre(){
+    const F=fluxoMensal(), ano=fF.ano, meses=mesesDe(ano), pers=agrupar(meses,fF.g,F), ks=pers.map(p=>p.k);
+    const porPer=fn=>pers.map(p=>sum(p.meses,fn));
+    const entTipo={}; recebimentos().forEach(r=>{ if(!r.data.startsWith(ano)) return; const t="Conta "+r.conta, m=r.data.slice(0,7); (entTipo[t]=entTipo[t]||{})[m]=((entTipo[t]||{})[m]||0)+r.valor; });
+    const ent=porPer(m=>F.ent[m]||0), tE=sum(ent,x=>x);
+    const catM={}; D().lancamentos.forEach(l=>{ if(!l.data.startsWith(ano)) return; const m=l.data.slice(0,7); (catM[l.categoriaId]=catM[l.categoriaId]||{})[m]=((catM[l.categoriaId]||{})[m]||0)+l.valor; });
+    const cols=[{t:""},...ks.map(k=>({t:nomePer(k),r:1})),{t:"Total",r:1},{t:"% entradas",r:1}];
+    const L=(nome,vals,cls="")=>{ const t=sum(vals,x=>x); return {nome,vals,t,cls}; };
+    const rows=[L("ENTRADAS",ent,"grp")];
+    const tipos=Object.keys(entTipo); if(tipos.length>1) tipos.forEach(t=>rows.push(L("  "+t,porPer(m=>entTipo[t][m]||0),"cat")));
+    const sai=porPer(m=>F.sai[m]||0); rows.push(L("SAÍDAS",sai,"grp"));
+    D().grupos.forEach(g=>{ const cs=D().categorias.filter(c=>c.grupoId===g.id&&catM[c.id]); if(!cs.length) return;
+      rows.push(L(g.nome,porPer(m=>sum(cs,c=>catM[c.id][m]||0)),"sub"));
+      cs.forEach(c=>rows.push(L("  "+c.nome,porPer(m=>catM[c.id][m]||0),"cat"))); });
+    const res=ent.map((v,i)=>v-sai[i]); rows.push(L("RESULTADO",res,"grp res"));
+    const fmt=v=>Math.abs(v)<EPS?"–":nf2(v);
+    const html=`<div class="rep-sum">${[["Entradas",tE],["Saídas",sum(sai,x=>x)],["Resultado",tE-sum(sai,x=>x)]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}<div><span>Margem</span><b class="num">${tE?pctFmt((tE-sum(sai,x=>x))/tE*100)+"%":"—"}</b></div></div>
+      <div class="tablewrap"><table class="dre"><thead><tr>${cols.map(c=>`<th class="${c.r?"r":""}">${c.t}</th>`).join("")}</tr></thead><tbody>
+      ${rows.map(r=>`<tr class="${r.cls}"><td>${esc(r.nome.trim())}</td>${r.vals.map(v=>`<td class="r num ${r.cls.includes("res")&&v<-EPS?"neg":""}">${fmt(v)}</td>`).join("")}<td class="r num ${r.cls.includes("res")&&r.t<-EPS?"neg":""}"><b>${fmt(r.t)}</b></td><td class="r num">${tE&&r.nome!=="ENTRADAS"?pctFmt(r.t/tE*100)+"%":""}</td></tr>`).join("")}
+      <tr class="cat"><td>Margem</td>${res.map((v,i)=>`<td class="r num">${ent[i]?pctFmt(v/ent[i]*100)+"%":"—"}</td>`).join("")}<td class="r num">${tE?pctFmt((tE-sum(sai,x=>x))/tE*100)+"%":""}</td><td></td></tr>
+      </tbody></table></div><p class="hint">Regime de caixa: entradas pela data de recebimento (notas fiscais pagas e entradas registradas sem nota); saídas pela data dos lançamentos de despesa.</p>`;
+    const csv=[[`DEMONSTRATIVO DE RESULTADO ${ano}`],["",...ks.map(nomePer),"Total","% entradas"],...rows.map(r=>[r.nome.trim(),...r.vals.map(nf2),nf2(r.t),tE&&r.nome!=="ENTRADAS"?pctFmt(r.t/tE*100)+"%":""])];
+    return {titulo:"Demonstrativo de resultado",sub:`${ano} · ${{mes:"mensal",tri:"trimestral",sem:"semestral"}[fF.g]}`,html,csv};
+  },
+  fluxo(){
+    const F=fluxoMensal(), hoje=todayISO(), m0=ymNow(), N=+fF.meses, meses=Array.from({length:N},(_,i)=>addMes(m0,i));
+    const pz=prazoMedioRecebimento(), quando=d=>{ const x=new Date(d+"T12:00"); x.setDate(x.getDate()+pz.dias); const ym=x.toISOString().slice(0,7); return ym<m0?m0:ym; };
+    const eNF={}, eCob={}, det=[];
+    state.notas.filter(n=>n.status==="emitida").forEach(n=>{ const m=quando(n.data||hoje); eNF[m]=(eNF[m]||0)+n.valor; det.push([m,"NF "+n.numero,cNome(cById(n.contratoId)),n.valor]); });
+    let semData=0, semValor=0;
+    state.contratos.filter(ativo).forEach(c=>{ const p=c.prox; if(!temProx(p)) return; if(!p.valor){ semValor++; return; } if(!p.data){ semData+=p.valor; return; }
+      const m=quando(p.data); eCob[m]=(eCob[m]||0)+p.valor; det.push([m,p.descricao||"Próxima cobrança",cNome(c),p.valor]); });
+    const media=mediaFechada(F,"sai",3);
+    const sai=meses.map(m=>{ const pl=planMes(m.slice(0,4),+m.slice(5,7)-1), base=pl>0?{v:pl,f:"planejado"}:{v:media,f:"média 3 meses"};
+      const ja=F.sai[m]||0; return m===m0&&ja>base.v?{v:ja,f:"já lançado"}:base; });
+    let acc=0;
+    const rows=meses.map((m,i)=>{ const e=(eNF[m]||0)+(eCob[m]||0); acc+=e-sai[i].v; return {m,nf:eNF[m]||0,cob:eCob[m]||0,e,s:sai[i],r:e-sai[i].v,acc}; });
+    const saldoFat=sum(state.contratos.filter(ativo),c=>Math.max(0,resumo(c).saldo)), prev=sum(Object.values(eCob),x=>x)+semData;
+    const html=`<div class="rep-sum">${[["Entradas previstas",sum(rows,r=>r.e)],["Saídas previstas",sum(rows,r=>r.s.v)],["Resultado previsto",sum(rows,r=>r.r)]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}</div>
+      <p class="hint">Entradas: notas já emitidas e próximas cobranças dos contratos, deslocadas pelo prazo médio de recebimento (${pz.dias} dias${pz.base?`, calculado com ${pz.base} notas pagas`:", padrão — poucas notas pagas para calcular"}). Saídas: planejamento do mês ou, sem planejamento, a média dos últimos 3 meses fechados.</p>
+      ${tabela([{t:"Mês"},{t:"Notas emitidas",r:1},{t:"Cobranças previstas",r:1},{t:"Entradas",r:1},{t:"Saídas",r:1},{t:"Base das saídas"},{t:"Resultado",r:1},{t:"Acumulado",r:1}],
+        rows.map(r=>[mesNome(r.m),r.nf?brl(r.nf):"—",r.cob?brl(r.cob):"—",brl(r.e),brl(r.s.v),`<span class="hint">${r.s.f}</span>`,`<span class="${r.r<-EPS?"neg":""}">${brl(r.r)}</span>`,`<span class="${r.acc<-EPS?"neg":""}">${brl(r.acc)}</span>`]),
+        ["Total",brl(sum(rows,r=>r.nf)),brl(sum(rows,r=>r.cob)),brl(sum(rows,r=>r.e)),brl(sum(rows,r=>r.s.v)),"",brl(sum(rows,r=>r.r)),""])}
+      <div class="alert info" style="margin-top:12px">Saldo a faturar dos contratos: <b>${brl(saldoFat)}</b>, dos quais <b>${brl(Math.max(0,saldoFat-prev))}</b> ainda sem cobrança prevista${semData?` e ${brl(semData)} com cobrança sem data`:""}${semValor?` · ${semValor} cobrança(s) prevista(s) sem valor`:""}. Cada contrato tem uma só "próxima cobrança", então o fluxo dos meses mais distantes tende a mostrar menos entradas do que vão acontecer.</div>
+      <h4>Entradas previstas</h4>${tabela([{t:"Mês"},{t:"Origem"},{t:"Contrato"},{t:"Valor",r:1}],det.filter(d=>meses.includes(d[0])).sort((a,b)=>a[0].localeCompare(b[0])).map(d=>[mesNome(d[0]),esc(d[1]),esc(d[2]),brl(d[3])]))}`;
+    const csv=[["FLUXO DE CAIXA PREVISTO",fdate(hoje)],["Mês","Notas emitidas","Cobranças previstas","Entradas","Saídas","Base das saídas","Resultado","Acumulado"],...rows.map(r=>[mesNome(r.m),nf2(r.nf),nf2(r.cob),nf2(r.e),nf2(r.s.v),r.s.f,nf2(r.r),nf2(r.acc)])];
+    return {titulo:"Fluxo de caixa previsto",sub:`Próximos ${N} meses a partir de ${mesNome(m0)}`,html,csv};
+  },
+  planreal(){
+    const ano=fF.ano, u=ultimoMesReal(ano), ate=fF.ateMes!==""?+fF.ateMes:Math.max(u,0), R=gradeReal(ano);
+    const linha=c=>{ const p=sum(planCat(ano,c.id).slice(0,ate+1),x=>x), r=sum((R[c.id]||[]).slice(0,ate+1),x=>x); return {p,r}; };
+    const rows=[], csv=[[`PLANEJADO x REAL ${ano}`,`janeiro a ${MESES[ate]}`],["Grupo","Categoria","Planejado","Real","Variação","Variação %"]];
+    let TP=0,TR=0;
+    D().grupos.forEach(g=>{ const cs=D().categorias.filter(c=>c.grupoId===g.id).map(c=>({c,...linha(c)})).filter(x=>x.p||x.r); if(!cs.length) return;
+      const P=sum(cs,x=>x.p), Rr=sum(cs,x=>x.r); TP+=P; TR+=Rr;
+      const f=(p,r)=>[brl(p),brl(r),`<span class="${p-r<-EPS?"neg":""}">${brl(p-r)}</span>`,p?`<span class="${p-r<-EPS?"neg":""}">${pctFmt((p-r)/p*100)}%</span>`:"—"];
+      rows.push([`<b>${esc(g.nome)}</b>`,...f(P,Rr).map(x=>`<b>${x}</b>`)]); cs.forEach(x=>{ rows.push([`<span style="padding-left:14px">${esc(x.c.nome)}</span>`,...f(x.p,x.r)]); csv.push([g.nome,x.c.nome,nf2(x.p),nf2(x.r),nf2(x.p-x.r),x.p?pctFmt((x.p-x.r)/x.p*100)+"%":""]); }); });
+    const html=`<div class="rep-sum">${[["Planejado",TP],["Real",TR],["Variação",TP-TR]].map(([a,v])=>`<div><span>${a}</span><b class="num ${a==="Variação"&&v<-EPS?"neg":""}">${brl(v)}</b></div>`).join("")}<div><span>Real / planejado</span><b class="num">${TP?pctFmt(TR/TP*100)+"%":"—"}</b></div></div>
+      <p class="hint">Variação = planejado − real. Valores negativos indicam gasto acima do planejado.</p>
+      ${tabela([{t:"Categoria"},{t:"Planejado",r:1},{t:"Real",r:1},{t:"Variação",r:1},{t:"Variação %",r:1}],rows,["Total",brl(TP),brl(TR),brl(TP-TR),TP?pctFmt((TP-TR)/TP*100)+"%":""])}`;
+    return {titulo:"Planejado × real",sub:`${ano} · janeiro a ${MESES[ate]}`,html,csv};
+  },
+  categorias(){
+    const de=fF.de||anoNow()+"-01-01", ate=fF.ate||todayISO();
+    const desloca=d=>String(+d.slice(0,4)-1)+d.slice(4);
+    const no=(a,b)=>D().lancamentos.filter(l=>l.data>=a&&l.data<=b);
+    const atual=no(de,ate), ant=no(desloca(de),desloca(ate)), T=sum(atual,l=>l.valor), TA=sum(ant,l=>l.valor);
+    const nMeses=Math.max(1,(+ate.slice(0,4)-+de.slice(0,4))*12+(+ate.slice(5,7)-+de.slice(5,7))+1);
+    const by=(ls,f)=>{ const o={}; ls.forEach(l=>{ const k=f(l); o[k]=(o[k]||0)+l.valor; }); return o; };
+    const cA=by(atual,l=>l.categoriaId), cP=by(ant,l=>l.categoriaId);
+    const lista=Object.keys({...cA,...cP}).map(id=>({id,v:cA[id]||0,a:cP[id]||0})).sort((x,y)=>y.v-x.v);
+    const varp=(v,a)=>a?`<span class="${v>a+EPS?"neg":""}">${v>=a?"+":""}${pctFmt((v-a)/a*100)}%</span>`:"—";
+    const html=`<div class="rep-sum">${[["Total no período",T],["Média mensal",T/nMeses],["Mesmo período do ano anterior",TA]].map(([a,v])=>`<div><span>${a}</span><b class="num">${brl(v)}</b></div>`).join("")}</div>
+      ${tabela([{t:"Categoria"},{t:"Grupo"},{t:"Total",r:1},{t:"% do total",r:1},{t:"Média mensal",r:1},{t:"Ano anterior",r:1},{t:"Variação",r:1}],
+        lista.map(x=>[esc(catNome(x.id)),esc((grpById(grpDaCat(x.id))||{}).nome||""),brl(x.v),T?pctFmt(x.v/T*100)+"%":"",brl(x.v/nMeses),x.a?brl(x.a):"—",varp(x.v,x.a)]),
+        ["Total","",brl(T),"100%",brl(T/nMeses),brl(TA),varp(T,TA)])}
+      <h4>Maiores lançamentos do período</h4>${tabela([{t:"Data"},{t:"Descrição"},{t:"Categoria"},{t:"Valor",r:1}],atual.slice().sort((a,b)=>b.valor-a.valor).slice(0,15).map(l=>[fdate(l.data),esc(l.descricao),esc(catNome(l.categoriaId)),brl(l.valor)]))}`;
+    const csv=[["DESPESAS POR CATEGORIA",`${fdate(de)} a ${fdate(ate)}`],["Categoria","Grupo","Total","% do total","Média mensal","Ano anterior"],...lista.map(x=>[catNome(x.id),(grpById(grpDaCat(x.id))||{}).nome||"",nf2(x.v),T?pctFmt(x.v/T*100)+"%":"",nf2(x.v/nMeses),nf2(x.a)])];
+    return {titulo:"Despesas por categoria",sub:`${fdate(de)} a ${fdate(ate)} · comparado com o mesmo período do ano anterior`,html,csv};
+  },
+  pend(){
+    const rp=reembPend(), porP={}; rp.forEach(l=>{ porP[l.pagoPor]=(porP[l.pagoPor]||0)+l.valor; });
+    const es=D().emprestimos;
+    const html=`<h4>Reembolsos a pagar</h4>${tabela([{t:"Pessoa"},{t:"Lançamentos",r:1},{t:"Total",r:1}],Object.entries(porP).map(([p,v])=>[esc(p),rp.filter(l=>l.pagoPor===p).length,brl(v)]),rp.length?["Total",rp.length,brl(sum(rp,l=>l.valor))]:null)}
+      ${rp.length?tabela([{t:"Data"},{t:"Descrição"},{t:"Pago por"},{t:"Valor",r:1}],rp.map(l=>[fdate(l.data),esc(l.descricao),esc(l.pagoPor),brl(l.valor)])):""}
+      <h4>Empréstimos a receber</h4>${tabela([{t:"Pessoa"},{t:"Descrição"},{t:"Valor",r:1},{t:"Pago",r:1},{t:"Saldo",r:1}],es.map(e=>[esc(e.pessoa),esc(e.descricao),brl(e.valor),brl(e.valor-saldoEmp(e)),brl(saldoEmp(e))]))}`;
+    const csv=[["REEMBOLSOS PENDENTES"],["Data","Descrição","Pago por","Valor"],...rp.map(l=>[fdate(l.data),l.descricao,l.pagoPor,nf2(l.valor)]),[],["EMPRÉSTIMOS"],["Pessoa","Descrição","Valor","Saldo"],...es.map(e=>[e.pessoa,e.descricao,nf2(e.valor),nf2(saldoEmp(e))])];
+    return {titulo:"Reembolsos e empréstimos",sub:`Posição em ${fdate(todayISO())}`,html,csv};
+  }
+};
+function renderFRel(){
+  const el=$("panel-frel"), anos=anosFin();
+  if(!anos.includes(fF.ano)) fF.ano=anos[0];
+  const fil={
+    dre:`<select class="inp" onchange="fF.ano=this.value;renderFRel()">${sel(fF.ano,anos.map(a=>[a,a]))}</select><div class="seg">${[["mes","Mensal"],["tri","Trimestral"],["sem","Semestral"]].map(([k,t])=>`<button class="${fF.g===k?"on":""}" onclick="fF.g='${k}';renderFRel()">${t}</button>`).join("")}</div>`,
+    fluxo:`<label class="hint">próximos</label><div class="seg">${[3,6,12].map(n=>`<button class="${+fF.meses===n?"on":""}" onclick="fF.meses=${n};renderFRel()">${n} meses</button>`).join("")}</div>`,
+    planreal:`<select class="inp" onchange="fF.ano=this.value;fF.ateMes='';renderFRel()">${sel(fF.ano,anosDesp().map(a=>[a,a]))}</select><label class="hint">até</label><select class="inp" onchange="fF.ateMes=this.value;renderFRel()">${sel(fF.ateMes,MESES.map((m,i)=>[String(i),m]),"último mês com lançamentos")}</select>`,
+    categorias:`<label class="hint">de</label><input type="date" class="inp" value="${fF.de||anoNow()+"-01-01"}" onchange="fF.de=this.value;renderFRel()"><label class="hint">até</label><input type="date" class="inp" value="${fF.ate||todayISO()}" onchange="fF.ate=this.value;renderFRel()">`,
+    pend:""
+  };
+  const r=RELF[fF.tipo](); ultimoRel=r;
+  el.innerHTML=`<div class="card no-print"><header style="flex-direction:column;align-items:stretch">
+      <div class="seg rep-tabs">${[["dre","Demonstrativo de resultado"],["fluxo","Fluxo de caixa previsto"],["planreal","Planejado × real"],["categorias","Despesas por categoria"],["pend","Reembolsos e empréstimos"]].map(([k,t])=>`<button class="${fF.tipo===k?"on":""}" onclick="fF.tipo='${k}';renderFRel()">${t}</button>`).join("")}</div>
+      <div class="toolbar">${fil[fF.tipo]}<div class="row-actions" style="margin-left:auto"><button class="btn sm" onclick="relCsv()">Excel (.csv)</button><button class="btn sm primary" onclick="relPrint()">Imprimir / PDF</button></div></div></header></div>
+    <div class="card rep" id="repOutF"><div class="body">
+      <div class="rep-head"><img src="${document.querySelector('.brandlogo').src}" alt="Polis"><div><h2>${r.titulo}</h2><div class="hint">${r.sub}</div></div><div class="hint rep-gen">Gerado em ${new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</div></div>
+      ${r.html}</div></div>`;
+}
+
+/* ================= FINANCEIRO: entradas =================
+   Recebimento = nota fiscal paga (Recebimentos) + entrada registrada sem nota no app
+   (histórico importado, valores "Sem NF", etc.). Uma entrada vinculada a uma nota paga
+   (nfId) é a mesma entrada e não é somada de novo. */
+const nfPagas=()=>state.notas.filter(n=>n.status==="paga"&&n.dataPagamento);
+const nfById=id=>state.notas.find(n=>n.id===id);
+const entDuplicada=e=>!!(e.nfId&&(nfById(e.nfId)||{}).status==="paga");
+function recebimentos(){
+  return [...nfPagas().map(n=>({data:n.dataPagamento,origem:cNome(cById(n.contratoId)),valor:n.valor,conta:n.conta||"Polis",fonte:"nf",ref:n})),
+          ...state.entradas.filter(e=>!entDuplicada(e)).map(e=>({data:e.data,origem:e.origem,valor:e.valor,conta:e.conta||"Polis",fonte:"ent",ref:e}))];
+}
+const contasUsadas=()=>[...new Set([...state.contas,...recebimentos().map(r=>r.conta)])];
+let fE={ano:anoNow(),mes:"",conta:"",fonte:"",q:""};
+function renderFEnt(){
+  const el=$("panel-fent"), ano=fE.ano, todos=recebimentos();
+  const anos=[...new Set([anoNow(),...todos.map(r=>r.data.slice(0,4))])].sort().reverse();
+  const doAno=todos.filter(r=>r.data.startsWith(ano)), contas=contasUsadas().filter(c=>doAno.some(r=>r.conta===c)||state.contas.includes(c));
+  const piv=Array.from({length:12},(_,i)=>{ const m=`${ano}-${String(i+1).padStart(2,"0")}`, rs=doAno.filter(r=>r.data.startsWith(m));
+    return {m,porConta:contas.map(c=>sum(rs.filter(r=>r.conta===c),r=>r.valor)),tot:sum(rs,r=>r.valor),n:rs.length}; });
+  const T=sum(piv,p=>p.tot), comRec=piv.filter(p=>p.tot>0), melhor=comRec.slice().sort((a,b)=>b.tot-a.tot)[0];
+  const q=norm(fE.q);
+  const dups=state.entradas.filter(entDuplicada).map(e=>({data:e.data,origem:e.origem,valor:e.valor,conta:e.conta,fonte:"dup",ref:e}));
+  const lista=[...todos,...dups].filter(r=>r.data.startsWith(ano)&&(!fE.mes||r.data.slice(5,7)===fE.mes)&&(!fE.conta||r.conta===fE.conta)
+      &&(!fE.fonte||r.fonte===fE.fonte)&&(!q||norm(r.origem+" "+(r.ref.obs||"")+" "+(r.ref.numero||"")).includes(q)))
+    .sort((a,b)=>b.data.localeCompare(a.data));
+  const fonteTxt=r=>r.fonte==="nf"?`<span class="badge b-info">NF ${esc(r.ref.numero)}</span>`:r.fonte==="dup"?`<span class="badge b-mut" title="Não somada: é a mesma entrada da nota fiscal">= NF ${esc((nfById(r.ref.nfId)||{}).numero||"")}</span>`:`<span class="badge b-mut">entrada sem nota no app</span>`;
+  el.innerHTML=`<div class="card"><header>
+      <div class="toolbar"><select class="inp" onchange="fE.ano=this.value;renderFEnt()">${sel(ano,anos.map(a=>[a,a]))}</select><span class="hint">Notas fiscais pagas + entradas registradas sem nota no app</span></div>
+      <div class="row-actions"><button class="btn sm" onclick="$('fileInput').click()">Importar planilha de entradas</button><button class="btn sm primary" onclick="openEnt()">Nova entrada</button></div></header>
+    <div class="grid2" style="gap:0;align-items:start">
+      <div class="tablewrap"><table><thead><tr><th>Mês</th>${contas.map(c=>`<th class="r">${esc(c)}</th>`).join("")}<th class="r">Total</th><th class="r">Nº</th><th class="r">% do ano</th></tr></thead><tbody>
+        ${piv.map(p=>`<tr class="${p.tot?"click":""}" ${p.tot?`onclick="fE.mes='${p.m.slice(5)}';renderFEnt()"`:""}><td>${MESES[+p.m.slice(5)-1]}</td>${p.porConta.map(v=>`<td class="r num">${v?nf2(v):"<span class='muted'>–</span>"}</td>`).join("")}<td class="r num"><b>${p.tot?nf2(p.tot):"–"}</b></td><td class="r num">${p.n||""}</td><td class="r num">${T&&p.tot?pctFmt(p.tot/T*100)+"%":""}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Total ${ano}</td>${contas.map((c,i)=>`<td class="r num">${nf2(sum(piv,p=>p.porConta[i]))}</td>`).join("")}<td class="r num">${nf2(T)}</td><td class="r num">${sum(piv,p=>p.n)}</td><td></td></tr></tfoot></table></div>
+      <div class="body"><div class="strip" style="grid-template-columns:1fr 1fr;margin:0">
+        <div class="chip hl"><span class="k">Recebido em ${ano}</span><span class="v">${brl(T)}</span><span class="u">${sum(piv,p=>p.n)} recebimento(s)</span></div>
+        <div class="chip"><span class="k">Média mensal</span><span class="v">${brl(comRec.length?T/comRec.length:0)}</span><span class="u">meses com recebimento</span></div>
+        <div class="chip good"><span class="k">Melhor mês</span><span class="v">${melhor?brl(melhor.tot):"—"}</span><span class="u">${melhor?MESES[+melhor.m.slice(5)-1]:""}</span></div>
+        <div class="chip"><span class="k">Por origem</span><span class="v" style="font-size:15px">${brl(sum(doAno.filter(r=>r.fonte==="nf"),r=>r.valor))}</span><span class="u">em notas · ${brl(sum(doAno.filter(r=>r.fonte==="ent"),r=>r.valor))} sem nota no app</span></div>
+      </div></div></div></div>
+  <div class="card"><header style="flex-direction:column;align-items:stretch;gap:10px">
+    <div class="toolbar"><input class="inp" style="flex:1" placeholder="Buscar cliente, nº da nota, observação" value="${esc(fE.q)}" oninput="fE.q=this.value;renderFEnt();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+      <select class="inp" onchange="fE.mes=this.value;renderFEnt()">${sel(fE.mes,MESES.map((m,i)=>[String(i+1).padStart(2,"0"),m]),"Todos os meses")}</select>
+      <select class="inp" onchange="fE.conta=this.value;renderFEnt()">${sel(fE.conta,contasUsadas().map(c=>[c,c]),"Todas as contas")}</select>
+      <select class="inp" onchange="fE.fonte=this.value;renderFEnt()">${sel(fE.fonte,[["nf","Notas fiscais pagas"],["ent","Entradas sem nota no app"],["dup","Duplicadas (não somadas)"]],"Todas as origens")}</select>
+      <button class="btn sm" onclick="entCsv()">Exportar (Excel)</button></div></header>
+    ${lista.length?`<div class="tablewrap"><table><thead><tr><th>Data</th><th>Cliente / origem</th><th>Conta</th><th>Registro</th><th class="r">Valor</th><th></th></tr></thead><tbody>
+      ${lista.map(r=>`<tr style="${r.fonte==="dup"?"opacity:.55":""}"><td class="num">${fdate(r.data)}</td><td>${esc(r.origem)}${r.ref.obs?`<div class="hint">${esc(r.ref.obs)}</div>`:""}</td><td>${esc(r.conta)}</td><td>${fonteTxt(r)}</td>
+        <td class="r num">${brl(r.valor)}</td><td><div class="row-actions">${r.fonte==="nf"?`<button class="btn sm" onclick="openNota({notaId:'${r.ref.id}'})">Ver nota</button>`:`<button class="btn sm" onclick="openEnt('${r.ref.id}')">Editar</button>`}</div></td></tr>`).join("")}</tbody>
+      <tfoot><tr><td colspan="4">${lista.filter(r=>r.fonte!=="dup").length} recebimento(s)</td><td class="r num">${brl(sum(lista.filter(r=>r.fonte!=="dup"),r=>r.valor))}</td><td></td></tr></tfoot></table></div>`
+      :`<div class="empty">Nenhum recebimento neste filtro.</div>`}</div>
+  <div class="card" style="max-width:640px"><header><div><h3>Contas de recebimento</h3><p class="hint">Onde o dinheiro entra. Aparece nas entradas e na nota fiscal, ao marcar como paga.</p></div></header>
+    <div class="body">${state.contas.map((c,i)=>`<div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" value="${esc(c)}" ${i===0?"disabled":""} onchange="renConta(${i},this.value)">${i===0?"<span></span>":`<button class="btn sm danger" onclick="state.contas.splice(${i},1);touch();renderFEnt()">Remover</button>`}</div>`).join("")}
+      <div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" id="nct" placeholder="Nova conta (ex.: Sem NF)" onkeydown="if(event.key==='Enter')addConta()"><button class="btn sm" onclick="addConta()">Adicionar</button></div></div></div>`;
+  window._entLista=lista;
+}
+function addConta(){ const v=$("nct").value.trim(); if(!v||state.contas.includes(v)) return; state.contas.push(v); touch(); renderFEnt(); }
+function renConta(i,v){ v=v.trim(); if(!v) return renderFEnt(); const old=state.contas[i]; state.contas[i]=v;
+  state.entradas.forEach(e=>{ if(e.conta===old) e.conta=v; }); state.notas.forEach(n=>{ if(n.conta===old) n.conta=v; }); touch(); }
+function entCsv(){ downloadCsv(`recebimentos_${todayISO()}.csv`,[["Data","Cliente / origem","Conta","Registro","Valor","Observações"],
+  ...(window._entLista||[]).slice().reverse().map(r=>[fdate(r.data),r.origem,r.conta,r.fonte==="nf"?"NF "+r.ref.numero:r.fonte==="dup"?"Duplicada (não somada)":"Entrada sem nota no app",nf2(r.valor),r.ref.obs||""])]); }
+function openEnt(id){
+  const e=id?state.entradas.find(x=>x.id===id):{data:todayISO(),origem:"",valor:0,conta:"Polis",obs:"",nfId:""};
+  const origens=[...new Set([...state.contratantes.map(k=>k.nome),...state.entradas.map(x=>x.origem)])].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const nfs=nfPagas().filter(n=>Math.abs(daysBetween(n.dataPagamento,e.data))<=60||n.id===e.nfId).sort((a,b)=>Math.abs(daysBetween(a.dataPagamento,e.data))-Math.abs(daysBetween(b.dataPagamento,e.data)));
+  openModal(`<header><h3>${id?"Editar entrada":"Nova entrada"}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><p class="hint" style="margin:0 0 10px">Use para recebimentos que não estão como nota fiscal paga no app (ex.: "Sem NF"). Recebimentos de notas fiscais são lançados em Recebimentos › Notas fiscais.</p>
+    <div class="fgrid"><div class="field"><label>Data do recebimento</label><input id="en_d" type="date" value="${e.data}"></div>
+      <div class="field"><label>Valor (R$)</label><input id="en_v" class="money" inputmode="decimal" value="${mv(e.valor)}" placeholder="0,00"></div>
+      <div class="field"><label>Conta</label><select id="en_c">${sel(e.conta,[...new Set([...state.contas,e.conta])].map(c=>[c,c]))}</select></div></div>
+    <div class="field"><label>Cliente / origem</label><input id="en_o" list="en_os" value="${esc(e.origem)}"><datalist id="en_os">${origens.map(o=>`<option value="${esc(o)}">`).join("")}</datalist></div>
+    ${nfs.length?`<div class="field"><label>É a mesma entrada de uma nota fiscal já paga no app? <span class="sub">se for, não é somada de novo</span></label><select id="en_nf"><option value="">Não</option>${nfs.map(n=>`<option value="${n.id}" ${n.id===e.nfId?"selected":""}>NF ${esc(n.numero)} · ${fdate(n.dataPagamento)} · ${brl(n.valor)} · ${esc(cNome(cById(n.contratoId)))}</option>`).join("")}</select></div>`:""}
+    <div class="field"><label>Observações</label><textarea id="en_ob">${esc(e.obs)}</textarea></div></div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="if(confirm('Excluir esta entrada?')){state.entradas=state.entradas.filter(x=>x.id!=='${id}');touch();closeModal();render()}">Excluir</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveEnt(${id?`'${id}'`:"null"})">Salvar</button></footer>`);
+}
+function saveEnt(id){
+  const d={data:$("en_d").value,valor:parseMoney($("en_v").value),conta:$("en_c").value,origem:$("en_o").value.trim(),obs:$("en_ob").value.trim(),nfId:$("en_nf")?$("en_nf").value:""};
+  if(!d.data||!(d.valor>0)){ toast("Informe a data e o valor"); return; }
+  if(!d.origem){ toast("Informe o cliente ou a origem"); $("en_o").focus(); return; }
+  if(id) Object.assign(state.entradas.find(x=>x.id===id),d); else state.entradas.push({id:uid(),importado:false,...d});
+  touch(); closeModal(); render(); toast(`Entrada ${id?"atualizada":"registrada"}: ${brl(d.valor)}`);
+}
+async function importarEntradas(o){
+  const lote=o.origem||"planilha", velhas=state.entradas.filter(e=>e.lote===lote);
+  if(velhas.length&&!confirm(`Este arquivo já foi importado antes (${velhas.length} entradas). Substituir essas entradas pelas do arquivo?`)) return;
+  await fsBackupNow("antes-de-importar-entradas");
+  state.entradas=state.entradas.filter(e=>e.lote!==lote);
+  (o.contas||[]).forEach(c=>{ if(!state.contas.includes(c)) state.contas.push(c); });
+  const usadas=new Set(state.entradas.map(e=>e.nfId).filter(Boolean)), novas=[];
+  (o.entradas||[]).forEach(x=>{
+    const e={id:uid(),data:x.data,origem:x.origem||"",valor:+x.valor||0,conta:x.conta||"Polis",obs:x.obs||"",nfId:"",importado:true,lote};
+    const nf=nfPagas().find(n=>!usadas.has(n.id)&&Math.abs(n.valor-e.valor)<=0.05&&Math.abs(daysBetween(n.dataPagamento,e.data))<=7);
+    if(nf){ e.nfId=nf.id; usadas.add(nf.id); }
+    novas.push(e);
+  });
+  state.entradas.push(...novas); touch();
+  const [p0,p1]=o.periodo||[novas.reduce((a,e)=>a<e.data?a:e.data,"9999"),novas.reduce((a,e)=>a>e.data?a:e.data,"")];
+  const vinc=novas.filter(e=>e.nfId), soltas=nfPagas().filter(n=>n.dataPagamento>=p0&&n.dataPagamento<=p1&&!usadas.has(n.id));
+  setMode("fin"); showTab("fent");
+  openModal(`<header><h3>Entradas importadas</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><p><b>${novas.length}</b> entradas de ${fdate(p0)} a ${fdate(p1)}, somando <b>${brl(sum(novas,e=>e.valor))}</b>.</p>
+    ${vinc.length?`<div class="alert ok">${vinc.length} delas já estavam no app como nota fiscal paga (mesmo valor e data próxima) e foram vinculadas a essas notas, sem somar de novo (${brl(sum(vinc,e=>e.valor))}).</div>`:""}
+    ${soltas.length?`<div class="alert warn"><b>Confira:</b> há ${soltas.length} nota(s) marcada(s) como paga(s) no app nesse período sem entrada correspondente na planilha (${brl(sum(soltas,n=>n.valor))}). Se alguma delas for a mesma entrada com valor diferente (por exemplo, valor bruto da nota × valor líquido recebido), abra a entrada em Financeiro › Entradas e indique a nota, para não contar duas vezes.
+      <ul style="margin:6px 0 0;padding-left:18px">${soltas.map(n=>`<li>NF ${esc(n.numero)} · pago em ${fdate(n.dataPagamento)} · ${brl(n.valor)} · ${esc(cNome(cById(n.contratoId)))}</li>`).join("")}</ul></div>`:`<div class="alert info">Nenhuma nota paga no app nesse período ficou sem correspondência — não há risco de contagem em dobro.</div>`}</div>
+  <footer><button class="btn primary" onclick="closeModal()">Ok</button></footer>`);
+}
+
 /* ================= barra de ferramentas ================= */
 function download(name,content,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),500); }
 const stamp=()=>todayISO();
@@ -1429,8 +2230,12 @@ $("fileInput").addEventListener("change",e=>{
   rd.onload=async()=>{ try{ let txt=rd.result, o;
     if(/^\s*[{\[]/.test(txt)) o=JSON.parse(txt);
     else { const m=txt.match(/window\.__BAKED__=("(?:[^"\\]|\\.)*");/); if(!m) throw 0; o=JSON.parse(JSON.parse(m[1])); }
+    if(o&&o.tipo==="polis-despesas"){ await importarDespesas(o); return; }
+    if(o&&o.tipo==="polis-entradas"){ await importarEntradas(o); return; }
     if(!Array.isArray(o.contratos)) throw 0;
-    if(temDados(state) && !confirm("Importar substitui os dados atuais (eles vão para a pasta de backups). Continuar?")) return;
+    if(!o.despesas) o.despesas=state.despesas;
+    if(!o.entradas){ o.entradas=state.entradas; o.contas=state.contas; }   /* arquivos antigos não têm despesas: mantém as atuais */
+    if(temDados(state) && !confirm("Importar substitui os dados de recebimentos atuais (eles vão para a pasta de backups). Continuar?")) return;
     await fsBackupNow("antes-de-importar");
     const fid=state.fileId; o=migrate(o); o.fileId=fid; state=o;
     selContrato=null; selK=null; touch(); render();
@@ -1456,6 +2261,7 @@ async function aplicarAtualizacao(){
 }
 
 /* ================= início ================= */
+renderTabs(); document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+curTab));
 render();
 fsInit();
 </script>
