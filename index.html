@@ -280,7 +280,7 @@ legend{font-size:12.5px;font-weight:650;padding:0 6px;color:var(--ink-2)}
 <div class="updbar" id="updbar"><span>Nova versão do app disponível</span><button class="btn sm primary" onclick="aplicarAtualizacao()">Atualizar agora</button></div>
 <script>
 /* ================= estado ================= */
-const APP_VERSION="R03";
+const APP_VERSION="R04";
 const LS_CACHE="polis.pagamentos.app.cache";
 const DATA_FILE="controle-pagamentos.json";
 const DISC_PADRAO=["Terraplenagem","Drenagem","Água","Esgoto","Estação elevatória de esgoto","Pavimentação","Sinalização","EIV","RIT","PGRCC","PGRS"];
@@ -321,68 +321,135 @@ function cacheLocal(){ try{ localStorage.setItem(LS_CACHE,JSON.stringify(state))
 function touch(){ state.updatedAt=Date.now(); cacheLocal(); scheduleSave(); updateFlag(); }
 
 /* ================= pasta de dados (File System Access) =================
-   O app grava automaticamente em DATA_FILE dentro da pasta escolhida pelo usuário
-   e mantém uma cópia por dia em /backups. O acesso à pasta fica guardado no IndexedDB. */
+   A MESMA pasta de dados pode ser acessada por mais de um caminho
+   (ex.: rede do escritório e RaiDrive). O app tenta os caminhos na ordem
+   cadastrada e usa o primeiro que responder. Sem acesso a nenhum, as alterações
+   ficam guardadas neste computador e são gravadas quando a pasta voltar.
+   "base" = versão do arquivo da pasta que este computador viu por último;
+   serve para detectar se o arquivo foi alterado em outro lugar. */
+const LS_BASE=LS_CACHE+":base";
+const getBase=()=>{ const v=+localStorage.getItem(LS_BASE); return isFinite(v)?v:0; };
+const setBase=v=>{ try{ localStorage.setItem(LS_BASE,String(v||0)); }catch(e){} };
 const idb={
   open(){ return new Promise((res,rej)=>{ const r=indexedDB.open("polis-pagamentos",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
   async get(k){ const db=await this.open(); return new Promise(res=>{ const q=db.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }); },
   async set(k,v){ const db=await this.open(); return new Promise(res=>{ const tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); }); }
 };
-const FS={dir:null,status:"init",lastSave:0,err:"",timer:null,backupDay:"",saving:false,again:false};
+const FS={locs:[],cur:-1,status:"init",lastSave:0,err:"",timer:null,backupDay:"",saving:false,again:false,pending:false,locStatus:{},busy:false};
 const fsSupported=()=>"showDirectoryPicker" in window;
+Object.defineProperty(FS,"dir",{get(){ return FS.cur>=0&&FS.locs[FS.cur]?FS.locs[FS.cur].h:null; }});
+const locNome=()=>FS.cur>=0&&FS.locs[FS.cur]?FS.locs[FS.cur].nome:"";
+async function saveLocs(){ await idb.set("locs",FS.locs.map(l=>({id:l.id,nome:l.nome,h:l.h}))); }
+
 async function fsInit(){
   if(!fsSupported()){ FS.status="unsupported"; render(); return; }
-  let h=null; try{ h=await idb.get("dir"); }catch(e){}
-  if(!h){ FS.status="none"; render(); return; }
-  FS.dir=h;
-  let p="granted"; try{ if(h.queryPermission) p=await h.queryPermission({mode:"readwrite"}); }catch(e){ p="prompt"; }
-  if(p==="granted") await fsAfterConnect(false); else { FS.status="ask"; render(); }
+  let locs=null; try{ locs=await idb.get("locs"); }catch(e){}
+  if(!locs){ let h=null; try{ h=await idb.get("dir"); }catch(e){} locs=h?[{id:uid(),nome:"Pasta principal",h}]:[]; if(h) { FS.locs=locs; await saveLocs(); } }
+  FS.locs=locs||[];
+  if(!FS.locs.length){ FS.status="none"; render(); return; }
+  await fsConnect(false);
+  setInterval(()=>{ if(FS.status==="offline") fsConnect(false); },30000);
+  window.addEventListener("focus",()=>{ if(FS.status==="offline") fsConnect(false); });
+  window.addEventListener("online",()=>{ if(FS.status==="offline") fsConnect(false); });
 }
-async function fsChoose(){
-  try{
-    const h=await window.showDirectoryPicker({id:"polis-pagamentos",mode:"readwrite",startIn:"documents"});
-    FS.dir=h; await idb.set("dir",h); await fsAfterConnect(true);
-  }catch(e){ if(e&&e.name!=="AbortError") toast("Não foi possível acessar a pasta"); }
-}
-async function fsReconnect(){
-  if(!FS.dir) return fsChoose();
-  try{ const p=await FS.dir.requestPermission({mode:"readwrite"}); if(p==="granted") await fsAfterConnect(false); }
-  catch(e){ toast("A pasta não está mais acessível. Escolha novamente."); fsChoose(); }
-}
-async function fsReadMain(){
-  try{ const fh=await FS.dir.getFileHandle(DATA_FILE); return JSON.parse(await (await fh.getFile()).text()); }catch(e){ return null; }
-}
-async function fsAfterConnect(novaPasta){
-  FS.status="ok";
-  const disk=await fsReadMain();
-  let gravar=false;
-  if(!disk){ gravar=true; }
-  else if(!temDados(state)){ state=migrate(disk); cacheLocal(); }
-  else if(disk.fileId===state.fileId){
-    if((disk.updatedAt||0)>=(state.updatedAt||0)){ state=migrate(disk); cacheLocal(); }
-    else gravar=true;   /* houve alterações enquanto a pasta estava desconectada */
-  } else {
-    const nD=(disk.contratos||[]).length, nL=state.contratos.length;
-    if(confirm(`A pasta escolhida já tem um controle com ${nD} contrato(s).\n\nOK = abrir os dados da pasta\nCancelar = gravar na pasta os dados que estão neste app (${nL} contrato(s)); o arquivo atual da pasta vai para /backups.`)){
-      state=migrate(disk); cacheLocal();
-    } else { await fsBackupNow("antes-de-substituir"); gravar=true; }
+/* lê o arquivo de dados; lança erro se a pasta não estiver acessível */
+async function readDisk(h){
+  try{ const fh=await h.getFileHandle(DATA_FILE); return JSON.parse(await (await fh.getFile()).text()); }
+  catch(e){
+    if(e&&e.name==="NotFoundError"){ for await (const k of h.keys()){ break; } return null; } /* pasta ok, arquivo ainda não existe */
+    throw e;
   }
-  render();
-  if(gravar) await fsSave();
-  if(novaPasta) toast(`Pasta “${FS.dir.name}” conectada — salvamento automático ativado`);
 }
+async function permissao(h,pedir){
+  try{ let p=h.queryPermission?await h.queryPermission({mode:"readwrite"}):"granted";
+    if(p!=="granted"&&pedir) p=await h.requestPermission({mode:"readwrite"});
+    return p; }catch(e){ return "prompt"; }
+}
+/* tenta os caminhos em ordem; pedir=true só quando o usuário clicou (o navegador exige) */
+async function fsConnect(pedir){
+  if(FS.busy) return; FS.busy=true;
+  try{
+    let precisaPermissao=false;
+    for(let i=0;i<FS.locs.length;i++){
+      const l=FS.locs[i], p=await permissao(l.h,pedir);
+      if(p!=="granted"){ FS.locStatus[l.id]="perm"; precisaPermissao=true; continue; }
+      let disk;
+      try{ disk=await readDisk(l.h); }catch(e){ FS.locStatus[l.id]="off"; continue; }
+      FS.locStatus[l.id]="ok"; FS.cur=i; FS.status="ok";
+      for(let j=i+1;j<FS.locs.length;j++) delete FS.locStatus[FS.locs[j].id];
+      await sincronizar(disk);
+      return;
+    }
+    FS.cur=-1;
+    FS.status= precisaPermissao&&!FS.locs.some(l=>FS.locStatus[l.id]==="ok") && FS.locs.every(l=>FS.locStatus[l.id]==="perm") ? "ask" : (precisaPermissao&&!pedir?"ask":"offline");
+  } finally { FS.busy=false; render(); }
+}
+const fsReconnect=()=>fsConnect(true);
+const fmtDH=t=>t?new Date(t).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
+/* decide entre os dados deste computador e os do arquivo da pasta */
+async function sincronizar(disk){
+  const base=getBase(), localMudou=(state.updatedAt||0)>base;
+  if(!disk){ await fsSave(true); return; }
+  if(!temDados(state)&&!localMudou){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); return; }
+  if(disk.fileId!==state.fileId){
+    const nD=(disk.contratos||[]).length, nL=state.contratos.length;
+    if(!temDados(state) || confirm(`A pasta tem um controle diferente do que está neste computador (${nD} contrato(s) na pasta, ${nL} aqui).\n\nOK = abrir os dados da pasta\nCancelar = gravar na pasta os dados deste computador (o arquivo atual da pasta vai para backups)`)){
+      await backupTexto(JSON.stringify(state,null,1),"deste-computador-substituido");
+      state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0);
+    } else { await fsBackupNow("antes-de-substituir"); await fsSave(true); }
+    return;
+  }
+  const diskMudou=(disk.updatedAt||0)>base;
+  if(!base){ /* primeira vez nesta versão: vale o mais recente */
+    if((disk.updatedAt||0)>=(state.updatedAt||0)){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); } else await fsSave(true);
+    return;
+  }
+  if(!diskMudou&&!localMudou) return;
+  if(!diskMudou&&localMudou){ await fsSave(true); toast("Alterações feitas sem acesso à pasta foram gravadas"); return; }
+  if(diskMudou&&!localMudou){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); return; }
+  /* conflito: os dois lados mudaram */
+  await backupTexto(JSON.stringify(disk,null,1),"conflito-versao-da-pasta");
+  await backupTexto(JSON.stringify(state,null,1),"conflito-versao-deste-computador");
+  if(confirm(`Os dados foram alterados nos dois lugares:\n• na pasta, em ${fmtDH(disk.updatedAt)} (outro computador ou outra sessão)\n• neste computador, em ${fmtDH(state.updatedAt)}\n\nOK = manter a versão DESTE COMPUTADOR\nCancelar = abrir a versão DA PASTA\n\nAs duas versões foram guardadas na subpasta backups.`)){
+    await fsSave(true);
+  } else { state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); }
+}
+async function fsChoose(){ return fsAddLoc(!FS.locs.length); }
+async function fsAddLoc(primeiro){
+  let h;
+  try{ h=await window.showDirectoryPicker({id:"polis-pagamentos",mode:"readwrite",startIn:"documents"}); }
+  catch(e){ if(e&&e.name!=="AbortError") toast("Não foi possível acessar a pasta"); return; }
+  if(!primeiro){
+    let disk=null; try{ disk=await readDisk(h); }catch(e){}
+    if(!disk && !confirm(`A pasta “${h.name}” não tem o arquivo ${DATA_FILE}.\nUm caminho alternativo precisa apontar para a MESMA pasta de dados. Adicionar mesmo assim?`)) return;
+    if(disk && disk.fileId!==state.fileId && !confirm(`A pasta “${h.name}” tem outro controle de pagamentos, não o mesmo desta pasta. Adicionar mesmo assim?`)) return;
+  }
+  const sug= primeiro?"Escritório (rede)":(FS.locs.length===1?"Fora do escritório (RaiDrive)":"Caminho "+(FS.locs.length+1));
+  const nome=(prompt("Dê um nome para este caminho:",sug)||sug).trim();
+  FS.locs.push({id:uid(),nome,h}); await saveLocs();
+  await fsConnect(true);
+  if(FS.status==="ok") toast(primeiro?`Pasta “${h.name}” conectada — salvamento automático ativado`:`Caminho “${nome}” adicionado`);
+}
+async function fsRemoveLoc(id){
+  const l=FS.locs.find(x=>x.id===id); if(!l) return;
+  if(!confirm(`Remover o caminho “${l.nome}”? O arquivo de dados não é apagado, o app só deixa de usar esse caminho.`)) return;
+  FS.locs=FS.locs.filter(x=>x.id!==id); delete FS.locStatus[id]; await saveLocs();
+  FS.cur=-1; if(FS.locs.length) await fsConnect(false); else { FS.status="none"; render(); }
+}
+async function fsMoveLoc(i,d){ const a=FS.locs; [a[i],a[i+d]]=[a[i+d],a[i]]; await saveLocs(); FS.cur=-1; await fsConnect(false); }
+async function fsRenameLoc(id,v){ const l=FS.locs.find(x=>x.id===id); if(l&&v.trim()){ l.nome=v.trim(); await saveLocs(); } render(); }
+
 function scheduleSave(){
-  if(!FS.dir||FS.status==="ask"||FS.status==="none"||FS.status==="unsupported") return;
-  clearTimeout(FS.timer); FS.timer=setTimeout(fsSave,400); FS.pending=true;
+  if(FS.status!=="ok") return;
+  clearTimeout(FS.timer); FS.pending=true; FS.timer=setTimeout(()=>fsSave(),400);
 }
 async function backupsDir(){ return FS.dir.getDirectoryHandle("backups",{create:true}); }
 async function writeText(dir,name,txt){ const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(txt); await w.close(); }
+const tsNow=()=>new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+async function backupTexto(txt,rotulo){ if(!FS.dir) return; try{ await writeText(await backupsDir(),`controle-pagamentos_${tsNow()}_${rotulo}.json`,txt); }catch(e){} }
 async function fsBackupNow(rotulo){
   if(!FS.dir) return;
-  try{
-    const prev=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(()=>null);
-    if(prev){ const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,"-"); await writeText(await backupsDir(),`controle-pagamentos_${ts}_${rotulo}.json`,prev); }
-  }catch(e){}
+  try{ const prev=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(()=>null); if(prev) await backupTexto(prev,rotulo); }catch(e){}
 }
 async function pruneBackups(bdir){
   try{
@@ -390,30 +457,35 @@ async function pruneBackups(bdir){
     nomes.sort(); for(const n of nomes.slice(0,Math.max(0,nomes.length-60))) await bdir.removeEntry(n);
   }catch(e){}
 }
-async function fsSave(){
+/* forcar=true: já sincronizado, grava sem verificar a pasta de novo */
+async function fsSave(forcar){
   clearTimeout(FS.timer); FS.pending=false;
-  if(!FS.dir) return;
+  if(FS.status!=="ok"||!FS.dir){ updateFlag(); return; }
   if(FS.saving){ FS.again=true; return; }
-  FS.saving=true; FS.status="ok"; updateFlag();
+  FS.saving=true; updateFlag();
+  let falhou=false;
   try{
+    const prevTxt=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(e=>{ if(e&&e.name==="NotFoundError") return null; throw e; });
+    if(!forcar && prevTxt){
+      const disk=JSON.parse(prevTxt);
+      if((disk.updatedAt||0)>getBase() && disk.updatedAt!==state.updatedAt){ FS.saving=false; await sincronizar(disk); render(); return; }
+    }
     const day=todayISO();
     if(FS.backupDay!==day){
       const bdir=await backupsDir(), nome=`controle-pagamentos_${day}.json`;
       let existe=true; try{ await bdir.getFileHandle(nome); }catch(e){ existe=false; }
-      if(!existe){
-        const prev=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(()=>null);
-        if(prev) await writeText(bdir,nome,prev);
-        await pruneBackups(bdir);
-      }
+      if(!existe){ if(prevTxt) await writeText(bdir,nome,prevTxt); await pruneBackups(bdir); }
       FS.backupDay=day;
     }
     await writeText(FS.dir,DATA_FILE,JSON.stringify(state,null,1));
-    FS.lastSave=Date.now(); FS.err="";
+    setBase(state.updatedAt||0); FS.lastSave=Date.now(); FS.err="";
   }catch(e){
-    FS.err=e&&e.message||String(e);
-    FS.status=(e&&e.name==="NotAllowedError")?"ask":"error";
+    falhou=true; FS.err=e&&e.message||String(e);
+    if(e&&e.name==="NotAllowedError") FS.status="ask";
+    else { FS.status="offline"; if(FS.locs[FS.cur]) FS.locStatus[FS.locs[FS.cur].id]="off"; FS.cur=-1; }
   }
   FS.saving=false; updateFlag();
+  if(falhou&&FS.status==="offline"){ renderBanner(); fsConnect(false); return; } /* tenta o outro caminho */
   if(FS.again){ FS.again=false; fsSave(); }
 }
 function flushSave(){ if(FS.pending) fsSave(); }
@@ -427,10 +499,10 @@ function updateFlag(){
   let cls="", txt="", tip="", act=null;
   switch(FS.status){
     case "unsupported": cls="pending"; txt="Use Chrome ou Edge para salvar em pasta"; tip="Este navegador não permite gravar numa pasta. Os dados ficam só no navegador — exporte backups."; break;
-    case "none": cls="pending"; txt="Escolher pasta de dados"; tip="Os dados ainda estão só no navegador. Clique para escolher a pasta onde o app vai salvar automaticamente."; act=fsChoose; break;
+    case "none": cls="pending"; txt="Escolher pasta de dados"; tip="Os dados ainda estão só no app. Clique para escolher a pasta onde o app vai salvar automaticamente."; act=fsChoose; break;
     case "ask": cls="pending"; txt="Clique para reconectar a pasta"; tip="O navegador pede uma confirmação para voltar a gravar na pasta de dados."; act=fsReconnect; break;
-    case "error": cls="err"; txt="Erro ao salvar — tentar de novo"; tip=FS.err; act=fsSave; break;
-    case "ok": if(FS.saving||FS.pending){ cls="busy"; txt="Salvando…"; } else { cls="ok"; txt=FS.lastSave?`Salvo · ${hm(FS.lastSave)}`:"Salvamento automático ativo"; } tip=FS.dir?`Pasta de dados: ${FS.dir.name}`:""; break;
+    case "offline": cls="pending"; txt=((state.updatedAt||0)>getBase()?"Sem acesso à pasta · alterações guardadas neste PC":"Sem acesso à pasta de dados"); tip="Nenhum caminho da pasta de dados está acessível agora. O app tenta de novo sozinho a cada 30 s; clique para tentar já."; act=fsReconnect; break;
+    case "ok": if(FS.saving||FS.pending){ cls="busy"; txt="Salvando…"; } else { cls="ok"; txt=(FS.lastSave?`Salvo · ${hm(FS.lastSave)}`:"Salvamento automático ativo")+(FS.locs.length>1?` · ${locNome()}`:""); } tip=FS.dir?`Pasta de dados: ${FS.dir.name} (${locNome()})`:""; break;
     default: txt="";
   }
   el.className="saveflag "+cls; el.textContent=txt; el.title=tip; el.onclick=act; el.disabled=!act;
@@ -439,13 +511,16 @@ function renderBanner(){
   const el=document.getElementById("banner"); if(!el) return;
   if(FS.status==="none") el.innerHTML=`<div class="card setup"><div class="body">
       <h3>Onde os dados vão ficar gravados?</h3>
-      <p>Escolha uma pasta no computador — de preferência dentro do OneDrive ou Google Drive, para ter cópia na nuvem. O app grava ali, automaticamente, o arquivo <span class="mono">${DATA_FILE}</span> a cada alteração, e mantém uma cópia por dia em <span class="mono">backups</span>.</p>
+      <p>Escolha a pasta de dados — no servidor do escritório, OneDrive ou Google Drive. O app grava ali, automaticamente, o arquivo <span class="mono">${DATA_FILE}</span> a cada alteração, e mantém uma cópia por dia em <span class="mono">backups</span>. Se a mesma pasta tiver outro caminho fora do escritório (ex.: RaiDrive), dá para adicioná-lo depois em Configurações.</p>
       <div class="row-actions" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" onclick="fsChoose()">Escolher pasta de dados</button>
       ${temDados(state)?"":`<button class="btn" onclick="$('fileInput').click()">Importar planilha antiga (.html ou .json)</button>`}</div>
       <p class="hint" style="margin-top:10px">Se escolher uma pasta que já tem o arquivo de dados, o app abre o que estiver nela.</p></div></div>`;
   else if(FS.status==="ask") el.innerHTML=`<div class="card setup"><div class="body" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-      <div><h3>Reconectar a pasta “${esc(FS.dir&&FS.dir.name||"")}”</h3><p class="hint">Por segurança o navegador pede uma confirmação para voltar a gravar na pasta. ${temDados(state)?"Os dados abaixo são a última cópia guardada no app.":""}</p></div>
+      <div><h3>Reconectar a pasta de dados</h3><p class="hint">Por segurança o navegador pede uma confirmação para voltar a gravar na pasta. ${temDados(state)?"Os dados abaixo são a última cópia guardada neste computador.":""}</p></div>
       <button class="btn primary" onclick="fsReconnect()">Reconectar e continuar</button></div></div>`;
+  else if(FS.status==="offline") el.innerHTML=`<div class="alert warn" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <span><b>Sem acesso à pasta de dados</b> (${FS.locs.map(l=>esc(l.nome)).join(", ")}). Pode continuar usando: as alterações ficam guardadas neste computador e são gravadas na pasta automaticamente quando ela voltar a responder.</span>
+      <span class="row-actions"><button class="btn sm" onclick="fsReconnect()">Tentar agora</button><button class="btn sm" onclick="showTab('config')">Caminhos da pasta</button></span></div>`;
   else if(FS.status==="unsupported") el.innerHTML=`<div class="alert warn">Este navegador não permite gravar numa pasta do computador. Abra o app no Google Chrome ou no Microsoft Edge. Enquanto isso, os dados ficam só neste navegador — use "Exportar backup".</div>`;
   else el.innerHTML="";
 }
@@ -818,13 +893,19 @@ function movItem(key,i,d){ const a=state[key]; [a[i],a[i+d]]=[a[i+d],a[i]]; touc
 function addItem(key){ const v=$("new_"+key).value.trim(); if(!v) return; state[key].push(v); touch(); renderConfig(); }
 function renderConfig(){
   const el=document.getElementById("panel-config");
+  const stLoc=(l,i)=>i===FS.cur?`<span class="badge b-ok">em uso</span>`:FS.locStatus[l.id]==="off"?`<span class="badge b-mut">sem acesso agora</span>`:FS.locStatus[l.id]==="perm"?`<span class="badge b-warn">precisa reconectar</span>`:`<span class="badge b-mut">reserva</span>`;
   const pasta= FS.status==="unsupported" ? `<p>Este navegador não permite gravar numa pasta. Use Chrome ou Edge.</p>`
-    : FS.dir ? `<p>Os dados são gravados automaticamente na pasta <b>${esc(FS.dir.name)}</b>, no arquivo <span class="mono">${DATA_FILE}</span>. Uma cópia por dia fica na subpasta <span class="mono">backups</span> (são mantidos os últimos 60 dias).</p>
-        <div class="row-actions" style="justify-content:flex-start">${FS.status==="ask"?`<button class="btn primary" onclick="fsReconnect()">Reconectar pasta</button>`:""}<button class="btn" onclick="fsChoose()">Trocar de pasta</button></div>`
+    : FS.locs.length ? `<p class="hint" style="margin:0 0 10px">O app grava em <span class="mono">${DATA_FILE}</span> usando o primeiro caminho da lista que estiver acessível. Cadastre aqui os diferentes caminhos da <b>mesma</b> pasta — por exemplo, a rede do escritório e o RaiDrive. Uma cópia por dia fica em <span class="mono">backups</span> (últimos 60 dias).</p>
+        ${FS.locs.map((l,i)=>`<div class="custom-row" style="grid-template-columns:1fr auto auto auto auto;margin-bottom:8px">
+          <div><input class="inp" value="${esc(l.nome)}" onchange="fsRenameLoc('${l.id}',this.value)"><div class="hint">pasta “${esc(l.h.name)}” · ${stLoc(l,i)}</div></div>
+          <button class="btn sm" ${i===0?"disabled":""} onclick="fsMoveLoc(${i},-1)" aria-label="Subir">↑</button>
+          <button class="btn sm" ${i===FS.locs.length-1?"disabled":""} onclick="fsMoveLoc(${i},1)" aria-label="Descer">↓</button>
+          <span></span><button class="btn sm danger" onclick="fsRemoveLoc('${l.id}')">Remover</button></div>`).join("")}
+        <div class="row-actions" style="justify-content:flex-start;margin-top:10px">${FS.status!=="ok"?`<button class="btn primary" onclick="fsReconnect()">Reconectar</button>`:""}<button class="btn" onclick="fsAddLoc(false)">+ Adicionar outro caminho para esta pasta</button></div>`
     : `<p>Nenhuma pasta escolhida — os dados estão só no app.</p><button class="btn primary" onclick="fsChoose()">Escolher pasta de dados</button>`;
   el.innerHTML=`<div class="grid2" style="align-items:start">
     <div>
-      <div class="card"><header><h3>Pasta de dados</h3></header><div class="body">${pasta}</div></div>
+      <div class="card"><header><h3>Caminhos da pasta de dados</h3></header><div class="body">${pasta}</div></div>
       ${listEditor("tiposContratante","Tipos de contratante","Usados para classificar e filtrar contratantes. Renomear aqui atualiza os contratantes que já usam o tipo.","Novo tipo (ex.: Associação de moradores)")}
       <div class="card"><header><div><h3>Começar do zero</h3><p class="hint">Apaga todos os contratantes, contratos e notas. Antes, o arquivo atual é copiado para a pasta de backups.</p></div>
         <button class="btn danger" onclick="apagarTudo()">Apagar todos os dados</button></header></div>

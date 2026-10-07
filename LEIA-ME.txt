@@ -1,4 +1,4 @@
-CONTROLE DE PAGAMENTOS · POLIS — app instalável (R03)
+CONTROLE DE PAGAMENTOS · POLIS — app instalável (R04)
 
 ARQUIVOS DESTA PASTA (todos vão para o GitHub, sem renomear)
   index.html             o aplicativo
@@ -32,3 +32,9 @@ PRIMEIRO USO
 ATUALIZAR PARA UMA VERSÃO NOVA
   No repositório: "Add file" > "Upload files", arraste os arquivos novos (substituem os antigos),
   "Commit changes". Ao abrir o app, aparece "Nova versão do app disponível · Atualizar agora".
+
+CAMINHOS DIFERENTES PARA A MESMA PASTA (R04)
+  Configurações > Caminhos da pasta de dados > "+ Adicionar outro caminho para esta pasta".
+  Ex.: "Escritório (rede)" e "Fora do escritório (RaiDrive)". O app usa o primeiro que responder.
+  Sem acesso a nenhum, as alterações ficam guardadas no computador e são gravadas na pasta
+  sozinhas quando ela voltar (o app tenta a cada 30 s).
