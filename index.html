@@ -324,7 +324,7 @@ table.dre tr.res td.neg{color:#FFB4A8!important}
 <div class="updbar" id="updbar"><span>Nova versão do app disponível</span><button class="btn sm primary" onclick="aplicarAtualizacao()">Atualizar agora</button></div>
 <script>
 /* ================= estado ================= */
-const APP_VERSION="R06";
+const APP_VERSION="R07";
 const LS_CACHE="polis.pagamentos.app.cache";
 const DATA_FILE="controle-pagamentos.json";
 const DISC_PADRAO=["Terraplenagem","Drenagem","Água","Esgoto","Estação elevatória de esgoto","Pavimentação","Sinalização","EIV","RIT","PGRCC","PGRS"];
@@ -386,7 +386,7 @@ function lsGet(k){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):
 let state=migrate(lsGet(LS_CACHE));
 const temDados=s=>!!((s.contratos||[]).length||(s.notas||[]).length);
 function cacheLocal(){ try{ localStorage.setItem(LS_CACHE,JSON.stringify(state)); }catch(e){} }
-function touch(){ state.updatedAt=Date.now(); cacheLocal(); scheduleSave(); updateFlag(); }
+function touch(){ state.updatedAt=Date.now(); cacheLocal(); try{ localStorage.setItem(LS_CACHE+":dirty","1"); }catch(e){} scheduleSave(); updateFlag(); }
 
 /* ================= pasta de dados (File System Access) =================
    A MESMA pasta de dados pode ser acessada por mais de um caminho
@@ -453,35 +453,122 @@ async function fsConnect(pedir){
   } finally { FS.busy=false; render(); }
 }
 const fsReconnect=()=>fsConnect(true);
+/* ================= uso por mais de uma pessoa =================
+   Cada gravação recebe um identificador (rev). Este computador guarda a última
+   versão da pasta que viu (snapshot + rev) e se tem alterações ainda não gravadas
+   (dirty). Se a pasta mudou e há alterações locais, as duas versões são COMBINADAS
+   registro a registro (contratos, notas, lançamentos…) e campo a campo; só um campo
+   editado de forma diferente nos dois lados fica com a versão deste computador
+   (a outra vai para backups). */
+const LS_REV=LS_CACHE+":rev", LS_SNAP=LS_CACHE+":snap", LS_DIRTY=LS_CACHE+":dirty";
+const revOf=o=>o&&(o.rev||"t"+(o.updatedAt||0));
+const baseRev=()=>{ try{ return localStorage.getItem(LS_REV)||(getBase()?"t"+getBase():""); }catch(e){ return ""; } };
+function localDirty(){ try{ const v=localStorage.getItem(LS_DIRTY); return v===null?(state.updatedAt||0)>getBase():v==="1"; }catch(e){ return false; } }
+function setDirty(v){ try{ localStorage.setItem(LS_DIRTY,v?"1":"0"); }catch(e){} }
+function getSnap(){ try{ const t=localStorage.getItem(LS_SNAP); return t?JSON.parse(t):null; }catch(e){ return null; } }
+function markSynced(obj){ try{ localStorage.setItem(LS_SNAP,JSON.stringify(obj)); localStorage.setItem(LS_REV,revOf(obj)); }catch(e){} setBase(obj.updatedAt||0); setDirty(false); }
+function adoptDisk(disk){ state=migrate(clone(disk)); cacheLocal(); markSynced(state); }
+
+const isObj=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+const jeq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function merge3(b,l,r){ const ctx={c:0}; const v=m3(b,l,r,ctx); return {v,conflitos:ctx.c}; }
+function m3(b,l,r,ctx){
+  if(jeq(l,r)) return l;
+  if(jeq(l,b)) return r;
+  if(jeq(r,b)) return l;
+  if(l===undefined) return r;           /* excluído aqui, editado lá: mantém (nada se perde) */
+  if(r===undefined) return l;
+  if(isObj(l)&&isObj(r)){
+    const bb=isObj(b)?b:{}, out={};
+    new Set([...Object.keys(l),...Object.keys(r)]).forEach(k=>{ if(k==="updatedAt"||k==="rev") return; const v=m3(bb[k],l[k],r[k],ctx); if(v!==undefined) out[k]=v; });
+    return out;
+  }
+  if(Array.isArray(l)&&Array.isArray(r)){
+    const bb=Array.isArray(b)?b:[], all=[...l,...r,...bb];
+    if(all.length&&all.every(x=>isObj(x)&&x.id)) return mList(bb,l,r,ctx);
+    if(all.every(x=>typeof x==="string")) return mStr(bb,l,r);
+  }
+  ctx.c++; return l;
+}
+function mList(b,l,r,ctx){
+  const B=new Map(b.map(x=>[x.id,x])), L=new Map(l.map(x=>[x.id,x])), R=new Map(r.map(x=>[x.id,x]));
+  const ids=[...l.map(x=>x.id),...r.map(x=>x.id).filter(id=>!L.has(id))], out=[];
+  ids.forEach(id=>{ const v=m3(B.get(id),L.get(id),R.get(id),ctx); if(v!==undefined) out.push(v); });
+  return out;
+}
+function mStr(b,l,r){ const out=l.filter(x=>!(b.includes(x)&&!r.includes(x))); r.forEach(x=>{ if(!b.includes(x)&&!out.includes(x)) out.push(x); }); return out; }
+
 const fmtDH=t=>t?new Date(t).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"—";
 /* decide entre os dados deste computador e os do arquivo da pasta */
 async function sincronizar(disk){
-  const base=getBase(), localMudou=(state.updatedAt||0)>base;
+  const dirty=localDirty();
   if(!disk){ await fsSave(true); return; }
-  if(!temDados(state)&&!localMudou){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); return; }
   if(disk.fileId!==state.fileId){
+    if(!temDados(state)){ adoptDisk(disk); return; }
     const nD=(disk.contratos||[]).length, nL=state.contratos.length;
-    if(!temDados(state) || confirm(`A pasta tem um controle diferente do que está neste computador (${nD} contrato(s) na pasta, ${nL} aqui).\n\nOK = abrir os dados da pasta\nCancelar = gravar na pasta os dados deste computador (o arquivo atual da pasta vai para backups)`)){
-      await backupTexto(JSON.stringify(state,null,1),"deste-computador-substituido");
-      state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0);
+    if(confirm(`A pasta tem um controle diferente do que está neste computador (${nD} contrato(s) na pasta, ${nL} aqui).\n\nOK = abrir os dados da pasta\nCancelar = gravar na pasta os dados deste computador (o arquivo atual da pasta vai para backups)`)){
+      await backupTexto(JSON.stringify(state,null,1),"deste-computador-substituido"); adoptDisk(disk);
     } else { await fsBackupNow("antes-de-substituir"); await fsSave(true); }
     return;
   }
-  const diskMudou=(disk.updatedAt||0)>base;
-  if(!base){ /* primeira vez nesta versão: vale o mais recente */
-    if((disk.updatedAt||0)>=(state.updatedAt||0)){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); } else await fsSave(true);
-    return;
-  }
-  if(!diskMudou&&!localMudou) return;
-  if(!diskMudou&&localMudou){ await fsSave(true); toast("Alterações feitas sem acesso à pasta foram gravadas"); return; }
-  if(diskMudou&&!localMudou){ state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); return; }
-  /* conflito: os dois lados mudaram */
-  await backupTexto(JSON.stringify(disk,null,1),"conflito-versao-da-pasta");
-  await backupTexto(JSON.stringify(state,null,1),"conflito-versao-deste-computador");
-  if(confirm(`Os dados foram alterados nos dois lugares:\n• na pasta, em ${fmtDH(disk.updatedAt)} (outro computador ou outra sessão)\n• neste computador, em ${fmtDH(state.updatedAt)}\n\nOK = manter a versão DESTE COMPUTADOR\nCancelar = abrir a versão DA PASTA\n\nAs duas versões foram guardadas na subpasta backups.`)){
-    await fsSave(true);
-  } else { state=migrate(disk); cacheLocal(); setBase(disk.updatedAt||0); }
+  const diskMudou=revOf(disk)!==baseRev();
+  if(!diskMudou&&!dirty) return;
+  if(!diskMudou&&dirty){ await fsSave(true); toast("Alterações feitas sem acesso à pasta foram gravadas"); return; }  /* só acontece ao reconectar */
+  if(diskMudou&&!dirty){ adoptDisk(disk); return; }
+  /* os dois lados mudaram: combina */
+  const base=getSnap()||{}, res=merge3(base,clone(state),clone(disk));
+  if(res.conflitos) await backupTexto(JSON.stringify(disk,null,1),"versao-de-outro-computador");
+  state=migrate(res.v); state.updatedAt=Date.now(); cacheLocal();
+  await fsSave(true);
+  toast(res.conflitos?`Alterações de outro computador combinadas com as suas. ${res.conflitos} campo(s) foram editados nos dois lugares: ficou a sua versão (a outra está em backups).`:"Alterações de outro computador combinadas com as suas");
 }
+async function fsSave(forcar){
+  clearTimeout(FS.timer); FS.pending=false;
+  if(FS.status!=="ok"||!FS.dir){ updateFlag(); return; }
+  if(FS.saving){ FS.again=true; return; }
+  FS.saving=true; updateFlag();
+  let falhou=false;
+  try{
+    const prevTxt=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(e=>{ if(e&&e.name==="NotFoundError") return null; throw e; });
+    if(!forcar && prevTxt){
+      const disk=JSON.parse(prevTxt);
+      if(revOf(disk)!==baseRev()){ FS.saving=false; await sincronizar(disk); render(); return; }
+    }
+    const day=todayISO();
+    if(FS.backupDay!==day){
+      const bdir=await backupsDir(), nome=`controle-pagamentos_${day}.json`;
+      let existe=true; try{ await bdir.getFileHandle(nome); }catch(e){ existe=false; }
+      if(!existe){ if(prevTxt) await writeText(bdir,nome,prevTxt); await pruneBackups(bdir); }
+      FS.backupDay=day;
+    }
+    state.rev=uid();
+    await writeText(FS.dir,DATA_FILE,JSON.stringify(state,null,1));
+    cacheLocal(); markSynced(state); FS.lastSave=Date.now(); FS.err="";
+  }catch(e){
+    falhou=true; FS.err=e&&e.message||String(e);
+    if(e&&e.name==="NotAllowedError") FS.status="ask";
+    else { FS.status="offline"; if(FS.locs[FS.cur]) FS.locStatus[FS.locs[FS.cur].id]="off"; FS.cur=-1; }
+  }
+  FS.saving=false; updateFlag();
+  if(falhou&&FS.status==="offline"){ renderBanner(); fsConnect(false); return; } /* tenta o outro caminho */
+  if(FS.again){ FS.again=false; fsSave(); }
+}
+/* confere a pasta de tempos em tempos para trazer o que outra pessoa gravou */
+async function fsPoll(){
+  if(FS.status!=="ok"||!FS.dir||FS.saving||FS.pending||FS.busy||document.visibilityState!=="visible") return;
+  if(document.getElementById("modalBg").classList.contains("show")) return;
+  const a=document.activeElement; if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest(".wrap")) return;
+  let disk;
+  try{ const f=await (await FS.dir.getFileHandle(DATA_FILE)).getFile(); if(f.lastModified===FS.lastMod) return; FS.lastMod=f.lastModified; disk=JSON.parse(await f.text()); }
+  catch(e){ if(e&&e.name==="NotFoundError") return; fsConnect(false); return; }
+  if(revOf(disk)===baseRev()) return;
+  const dirty=localDirty(); await sincronizar(disk); render();
+  if(!dirty) toast(`Dados atualizados com alterações feitas em outro computador${disk.updatedAt?" ("+fmtDH(disk.updatedAt)+")":""}`);
+}
+setInterval(fsPoll,20000);
+window.addEventListener("focus",()=>fsPoll());
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") fsPoll(); });
+
 async function fsChoose(){ return fsAddLoc(!FS.locs.length); }
 async function fsAddLoc(primeiro){
   let h;
@@ -525,37 +612,6 @@ async function pruneBackups(bdir){
     nomes.sort(); for(const n of nomes.slice(0,Math.max(0,nomes.length-60))) await bdir.removeEntry(n);
   }catch(e){}
 }
-/* forcar=true: já sincronizado, grava sem verificar a pasta de novo */
-async function fsSave(forcar){
-  clearTimeout(FS.timer); FS.pending=false;
-  if(FS.status!=="ok"||!FS.dir){ updateFlag(); return; }
-  if(FS.saving){ FS.again=true; return; }
-  FS.saving=true; updateFlag();
-  let falhou=false;
-  try{
-    const prevTxt=await FS.dir.getFileHandle(DATA_FILE).then(h=>h.getFile()).then(f=>f.text()).catch(e=>{ if(e&&e.name==="NotFoundError") return null; throw e; });
-    if(!forcar && prevTxt){
-      const disk=JSON.parse(prevTxt);
-      if((disk.updatedAt||0)>getBase() && disk.updatedAt!==state.updatedAt){ FS.saving=false; await sincronizar(disk); render(); return; }
-    }
-    const day=todayISO();
-    if(FS.backupDay!==day){
-      const bdir=await backupsDir(), nome=`controle-pagamentos_${day}.json`;
-      let existe=true; try{ await bdir.getFileHandle(nome); }catch(e){ existe=false; }
-      if(!existe){ if(prevTxt) await writeText(bdir,nome,prevTxt); await pruneBackups(bdir); }
-      FS.backupDay=day;
-    }
-    await writeText(FS.dir,DATA_FILE,JSON.stringify(state,null,1));
-    setBase(state.updatedAt||0); FS.lastSave=Date.now(); FS.err="";
-  }catch(e){
-    falhou=true; FS.err=e&&e.message||String(e);
-    if(e&&e.name==="NotAllowedError") FS.status="ask";
-    else { FS.status="offline"; if(FS.locs[FS.cur]) FS.locStatus[FS.locs[FS.cur].id]="off"; FS.cur=-1; }
-  }
-  FS.saving=false; updateFlag();
-  if(falhou&&FS.status==="offline"){ renderBanner(); fsConnect(false); return; } /* tenta o outro caminho */
-  if(FS.again){ FS.again=false; fsSave(); }
-}
 function flushSave(){ if(FS.pending) fsSave(); }
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushSave(); });
 window.addEventListener("pagehide",flushSave);
@@ -569,7 +625,7 @@ function updateFlag(){
     case "unsupported": cls="pending"; txt="Use Chrome ou Edge para salvar em pasta"; tip="Este navegador não permite gravar numa pasta. Os dados ficam só no navegador — exporte backups."; break;
     case "none": cls="pending"; txt="Escolher pasta de dados"; tip="Os dados ainda estão só no app. Clique para escolher a pasta onde o app vai salvar automaticamente."; act=fsChoose; break;
     case "ask": cls="pending"; txt="Clique para reconectar a pasta"; tip="O navegador pede uma confirmação para voltar a gravar na pasta de dados."; act=fsReconnect; break;
-    case "offline": cls="pending"; txt=((state.updatedAt||0)>getBase()?"Sem acesso à pasta · alterações guardadas neste PC":"Sem acesso à pasta de dados"); tip="Nenhum caminho da pasta de dados está acessível agora. O app tenta de novo sozinho a cada 30 s; clique para tentar já."; act=fsReconnect; break;
+    case "offline": cls="pending"; txt=(localDirty()?"Sem acesso à pasta · alterações guardadas neste PC":"Sem acesso à pasta de dados"); tip="Nenhum caminho da pasta de dados está acessível agora. O app tenta de novo sozinho a cada 30 s; clique para tentar já."; act=fsReconnect; break;
     case "ok": if(FS.saving||FS.pending){ cls="busy"; txt="Salvando…"; } else { cls="ok"; txt=(FS.lastSave?`Salvo · ${hm(FS.lastSave)}`:"Salvamento automático ativo")+(FS.locs.length>1?` · ${locNome()}`:""); } tip=FS.dir?`Pasta de dados: ${FS.dir.name} (${locNome()})`:""; break;
     default: txt="";
   }
@@ -1154,7 +1210,7 @@ function downloadCsv(nome,rows){
 /* ================= MODAL ================= */
 const modalBg=document.getElementById("modalBg"), modal=document.getElementById("modal");
 function openModal(html){ modal.innerHTML=html; modalBg.classList.add("show"); const f=modal.querySelector("input:not([type=checkbox]),select"); if(f) setTimeout(()=>f.focus(),30); }
-function closeModal(){ modalBg.classList.remove("show"); modal.innerHTML=""; }
+function closeModal(){ modalBg.classList.remove("show"); modal.innerHTML=""; setTimeout(()=>fsPoll(),600); }
 modalBg.addEventListener("mousedown",e=>{ if(e.target===modalBg) closeModal(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modalBg.classList.contains("show")) closeModal(); });
 const mv=v=>v?nf2(v):"";

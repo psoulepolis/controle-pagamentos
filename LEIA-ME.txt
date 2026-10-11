@@ -1,4 +1,4 @@
-CONTROLE FINANCEIRO · POLIS — app instalável (R06)
+CONTROLE FINANCEIRO · POLIS — app instalável (R07)
 
 ARQUIVOS DESTA PASTA (todos vão para o GitHub, sem renomear)
   index.html             o aplicativo
@@ -47,3 +47,8 @@ DESPESAS E FINANCEIRO (R05)
 ENTRADAS (R06)
   Financeiro > Entradas reúne as notas fiscais pagas e os recebimentos registrados sem nota no app.
   Para trazer o 1º semestre de 2026: Importar > entradas-2026-1sem.json.
+
+MAIS DE UMA PESSOA (R07)
+  Cada pessoa instala o app pelo mesmo endereço no próprio computador e escolhe a mesma pasta de dados.
+  O app confere a pasta a cada 20 s (e ao voltar para a janela) e traz o que a outra pessoa gravou.
+  Se as duas editarem ao mesmo tempo, as alterações são combinadas registro a registro.
