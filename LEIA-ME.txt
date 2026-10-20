@@ -1,4 +1,4 @@
-CONTROLE FINANCEIRO · POLIS — app instalável (R07)
+CONTROLE FINANCEIRO · POLIS — app instalável (R08)
 
 ARQUIVOS DESTA PASTA (todos vão para o GitHub, sem renomear)
   index.html             o aplicativo
@@ -52,3 +52,9 @@ MAIS DE UMA PESSOA (R07)
   Cada pessoa instala o app pelo mesmo endereço no próprio computador e escolhe a mesma pasta de dados.
   O app confere a pasta a cada 20 s (e ao voltar para a janela) e traz o que a outra pessoa gravou.
   Se as duas editarem ao mesmo tempo, as alterações são combinadas registro a registro.
+
+RETENÇÃO NA FONTE E PROPOSTAS (R08)
+  Cada nota tem empresa emissora e retenção (padrão Polis 6,15%, Pedro e Sem NF 0%, ajustável em
+  Financeiro > Entradas). Nota paga com retenção lança sozinha a despesa "Impostos retidos na fonte".
+  Recebimentos > Propostas: nº/ano, situação; "Aceitar" cria o contrato.
+  Para trazer as propostas de 2026: Importar > propostas-2026.json.

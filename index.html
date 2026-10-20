@@ -262,6 +262,13 @@ table.dre tr.res td.neg{color:#FFB4A8!important}
 .grpbox{border:1px solid var(--line-2);border-radius:9px;padding:10px 10px 4px;margin-bottom:12px}
 .catrow.off input:first-child{color:var(--muted);text-decoration:line-through}
 @media(max-width:700px){.modes{order:3;width:100%}.modes button{flex:1}}
+.bulkbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:var(--water-fill-2);border-bottom:1px solid var(--line)}
+tr.selrow td{background:#F1EFFD}
+.chipsel{display:flex;flex-wrap:wrap;gap:6px}
+.chipsel label{border:1px solid var(--line);border-radius:14px;padding:4px 11px;font-size:12.5px;cursor:pointer;user-select:none;background:#fff}
+.chipsel label.on{background:var(--water-fill-2);border-color:var(--water);color:var(--water-d);font-weight:600}
+.chipsel input{display:none}
+.liqbox{padding:8px 10px;background:var(--calc);border-radius:7px;min-height:36px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 @media print{
   .topbar,.tabs,.btn,.seg,.toolbar .inp,.no-print{display:none!important}
   body{background:#fff}
@@ -304,6 +311,7 @@ table.dre tr.res td.neg{color:#FFB4A8!important}
 <main class="wrap">
   <div id="banner"></div>
   <section class="panel active" id="panel-painel"></section>
+  <section class="panel" id="panel-propostas"></section>
   <section class="panel" id="panel-contratantes"></section>
   <section class="panel" id="panel-contratos"></section>
   <section class="panel" id="panel-notas"></section>
@@ -324,7 +332,7 @@ table.dre tr.res td.neg{color:#FFB4A8!important}
 <div class="updbar" id="updbar"><span>Nova versão do app disponível</span><button class="btn sm primary" onclick="aplicarAtualizacao()">Atualizar agora</button></div>
 <script>
 /* ================= estado ================= */
-const APP_VERSION="R07";
+const APP_VERSION="R08";
 const LS_CACHE="polis.pagamentos.app.cache";
 const DATA_FILE="controle-pagamentos.json";
 const DISC_PADRAO=["Terraplenagem","Drenagem","Água","Esgoto","Estação elevatória de esgoto","Pavimentação","Sinalização","EIV","RIT","PGRCC","PGRS"];
@@ -342,7 +350,7 @@ function migrateDesp(d){
   d.grupos=(d.grupos||[]).map(g=>({id:g.id||uid(),nome:g.nome||"Grupo"}));
   d.categorias=(d.categorias||[]).map(c=>({id:c.id||uid(),grupoId:c.grupoId||(d.grupos[0]||{}).id,nome:c.nome||"Categoria",ativa:c.ativa!==false}));
   d.lancamentos=(d.lancamentos||[]).map(l=>({id:l.id||uid(),data:l.data||"",categoriaId:l.categoriaId||"",descricao:l.descricao||"",valor:+l.valor||0,
-    pagoPor:l.pagoPor||"Polis",reembolso:l.reembolso||"",dataReembolso:l.dataReembolso||"",obs:l.obs||"",fixaId:l.fixaId||""}));
+    pagoPor:l.pagoPor||"Polis",reembolso:l.reembolso||"",dataReembolso:l.dataReembolso||"",obs:l.obs||"",fixaId:l.fixaId||"",auto:l.auto||"",nfId:l.nfId||""}));
   const p={}; Object.entries(d.planejado||{}).forEach(([ano,cats])=>{ p[ano]={}; Object.entries(cats||{}).forEach(([cid,arr])=>{ p[ano][cid]=Array.from({length:12},(_,i)=>+(arr||[])[i]||0); }); }); d.planejado=p;
   d.fixas=(d.fixas||[]).map(f=>({id:f.id||uid(),categoriaId:f.categoriaId||"",descricao:f.descricao||"",valor:+f.valor||0,pagoPor:f.pagoPor||"Polis",ativa:f.ativa!==false}));
   d.pessoas=Array.isArray(d.pessoas)&&d.pessoas.length?d.pessoas:["Polis"]; if(!d.pessoas.includes("Polis")) d.pessoas.unshift("Polis");
@@ -353,7 +361,7 @@ function migrateDesp(d){
 }
 
 const norm=x=>String(x||"").trim().toLowerCase();
-function blankState(){ return {version:2,updatedAt:0,disciplinas:DISC_PADRAO.slice(),tiposContratante:TIPOS_PADRAO.slice(),contratantes:[],contratos:[],notas:[],despesas:blankDesp(),entradas:[],contas:["Polis"]}; }
+function blankState(){ return {version:2,updatedAt:0,disciplinas:DISC_PADRAO.slice(),tiposContratante:TIPOS_PADRAO.slice(),contratantes:[],contratos:[],notas:[],despesas:blankDesp(),entradas:[],contas:["Polis"],propostas:[],retPadrao:{"Polis":6.15},impEst:{"Polis":13.3}}; }
 function migrate(s){
   s=s||blankState();
   if(!s.fileId) s.fileId=uid();
@@ -375,10 +383,19 @@ function migrate(s){
     }
     return {id:c.id||uid(),contratanteId:kid,empreendimento:c.empreendimento||"",proposta:c.proposta||c.numero||"",numContrato:c.numContrato||"",
       data:c.data||"",valor:+c.valor||0,disciplinas:(c.disciplinas||[]).map(d=>({id:d.id||uid(),nome:d.nome||"",valor:+d.valor||0})),
-      condicao:c.condicao||"",prox:c.prox||{data:"",descricao:"",valor:0},obs:c.obs||"",encerrado:!!c.encerrado};
+      condicao:c.condicao||"",prox:c.prox||{data:"",descricao:"",valor:0},obs:c.obs||"",encerrado:!!c.encerrado,propostaId:c.propostaId||""};
   });
   s.notas=(s.notas||[]).map(n=>({id:n.id||uid(),contratoId:n.contratoId,numero:n.numero||"",data:n.data||"",valor:+n.valor||0,
-    descricao:n.descricao||"",status:n.status||"emitida",dataPagamento:n.dataPagamento||"",conta:n.conta||"Polis",rateio:n.rateio||{},obs:n.obs||""}));
+    descricao:n.descricao||"",status:n.status||"emitida",dataPagamento:n.dataPagamento||"",conta:n.conta||"Polis",rateio:n.rateio||{},obs:n.obs||"",retPct:n.retPct,retencao:n.retencao}));
+  /* retenção na fonte (R08): % padrão por empresa emissora; notas antigas recebem o padrão */
+  const _o=x=>x&&typeof x==="object"&&!Array.isArray(x);
+  s.retPadrao=_o(s.retPadrao)?s.retPadrao:{"Polis":6.15}; s.impEst=_o(s.impEst)?s.impEst:{"Polis":13.3};
+  const _pad=(m,c,def)=>{ const k=Object.keys(m).find(x=>norm(x)===norm(c)); return k!==undefined?+m[k]||0:def(c); };
+  s.notas.forEach(n=>{ if(n.retPct===undefined||n.retPct===null||n.retPct==="") n.retPct=_pad(s.retPadrao,n.conta,c=>norm(c)==="polis"?6.15:0); n.retPct=+n.retPct||0;
+    if(n.retencao===undefined||n.retencao===null||n.retencao==="") n.retencao=Math.round(n.valor*n.retPct)/100; n.retencao=+n.retencao||0; });
+  s.propostas=(s.propostas||[]).map(x=>({id:x.id||uid(),ano:+x.ano||+(x.data||"").slice(0,4)||new Date().getFullYear(),numero:+x.numero||0,data:x.data||"",contratanteId:x.contratanteId||"",
+    obra:x.obra||"",servico:x.servico||"",disciplinas:Array.isArray(x.disciplinas)?x.disciplinas:[],empresa:x.empresa||"Polis",valor:+x.valor||0,status:x.status||"enviada",
+    dataDecisao:x.dataDecisao||"",valorAceito:+x.valorAceito||0,contratoId:x.contratoId||"",obs:x.obs||"",lote:x.lote||""}));
   delete s.savedAt;
   return s;
 }
@@ -386,7 +403,7 @@ function lsGet(k){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):
 let state=migrate(lsGet(LS_CACHE));
 const temDados=s=>!!((s.contratos||[]).length||(s.notas||[]).length);
 function cacheLocal(){ try{ localStorage.setItem(LS_CACHE,JSON.stringify(state)); }catch(e){} }
-function touch(){ state.updatedAt=Date.now(); cacheLocal(); try{ localStorage.setItem(LS_CACHE+":dirty","1"); }catch(e){} scheduleSave(); updateFlag(); }
+function touch(){ if(typeof syncRetencoes==="function") syncRetencoes(); state.updatedAt=Date.now(); cacheLocal(); try{ localStorage.setItem(LS_CACHE+":dirty","1"); }catch(e){} scheduleSave(); updateFlag(); }
 
 /* ================= pasta de dados (File System Access) =================
    A MESMA pasta de dados pode ser acessada por mais de um caminho
@@ -705,7 +722,7 @@ function statusNota(n){
 /* ================= abas ================= */
 /* três áreas no mesmo app; cada uma com suas abas. Configurações (pasta de dados) aparece em todas. */
 const MODES={
-  rec:[["painel","Painel"],["contratantes","Contratantes","cntK"],["contratos","Contratos","cntC"],["notas","Notas fiscais","cntN"],["relatorios","Relatórios"],["config","Configurações"]],
+  rec:[["painel","Painel"],["propostas","Propostas","cntP"],["contratantes","Contratantes","cntK"],["contratos","Contratos","cntC"],["notas","Notas fiscais","cntN"],["relatorios","Relatórios"],["config","Configurações"]],
   desp:[["dpainel","Painel"],["dlanc","Lançamentos","cntL"],["dgrade","Despesas do ano"],["dplan","Planejamento"],["demp","Empréstimos"],["dconfig","Categorias e fixas"],["config","Configurações"]],
   fin:[["fvisao","Visão geral"],["fent","Entradas","cntE"],["frel","Relatórios"],["config","Configurações"]]
 };
@@ -730,9 +747,9 @@ function showTab(t){
 }
 function render(){
   const cnt=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
-  cnt("cntC",state.contratos.length); cnt("cntN",state.notas.length); cnt("cntK",state.contratantes.length); cnt("cntL",state.despesas.lancamentos.length); cnt("cntE",state.entradas.length+state.notas.filter(n=>n.status==="paga").length);
+  cnt("cntC",state.contratos.length); cnt("cntN",state.notas.length); cnt("cntK",state.contratantes.length); cnt("cntP",state.propostas.filter(pAberta).length); cnt("cntL",state.despesas.lancamentos.length); cnt("cntE",state.entradas.length+state.notas.filter(n=>n.status==="paga").length);
   renderBanner();
-  ({painel:renderPainel,contratantes:renderContratantes,contratos:renderContratos,notas:renderNotas,relatorios:renderRelatorios,config:renderConfig,
+  ({painel:renderPainel,propostas:renderPropostas,contratantes:renderContratantes,contratos:renderContratos,notas:renderNotas,relatorios:renderRelatorios,config:renderConfig,
     dpainel:renderDPainel,dlanc:renderDLanc,dgrade:renderDGrade,dplan:renderDPlan,demp:renderDEmp,dconfig:renderDConfig,fvisao:renderFVisao,fent:renderFEnt,frel:renderFRel})[curTab]();
   updateFlag();
 }
@@ -833,7 +850,7 @@ function goContrato(id){ selContrato=id; showTab("contratos"); }
 function marcarPaga(id){
   const n=state.notas.find(x=>x.id===id); if(!n) return;
   n.status="paga"; n.dataPagamento=todayISO(); touch(); render();
-  toast(`NF ${n.numero} marcada como paga em ${fdate(n.dataPagamento)} (edite se a data for outra)`);
+  toast(`NF ${n.numero} paga em ${fdate(n.dataPagamento)}${n.retencao?` · retenção de ${brl(n.retencao)} lançada em Despesas`:""} (edite a nota se a data for outra)`);
 }
 /* ================= CONTRATOS ================= */
 let selContrato=null, fC={q:"",st:"and",tipo:"",kid:""};
@@ -878,12 +895,12 @@ function detalheContrato(c){
       <div><div style="font-size:12px;color:var(--muted);font-weight:600">Próxima cobrança</div>
       <div style="font-weight:650">${temProx(p)?`${[p.data&&fdate(p.data),esc(p.descricao),p.valor&&brl(p.valor)+pctOf(p.valor,c)].filter(Boolean).join(" · ")} ${late?`<span class="badge b-red">atrasada</span>`:""}`:"Não definida"}</div></div>
       <div class="row-actions"><button class="btn sm" onclick="editProx('${c.id}')">Alterar previsão</button><button class="btn sm primary" onclick="openNota({contratoId:'${c.id}'})">Emitir nota</button></div></div>`;
-  const notasHtml=ns.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Descrição</th><th class="r">Valor</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
-    ${ns.map(n=>`<tr style="${n.status==="cancelada"?"opacity:.55;text-decoration:line-through":""}"><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td><td>${esc(n.descricao)}</td><td class="r num">${brl(n.valor)}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
+  const notasHtml=ns.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Descrição</th><th class="r">Valor</th><th class="r">Líquido</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
+    ${ns.map(n=>`<tr style="${n.status==="cancelada"?"opacity:.55;text-decoration:line-through":""}"><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td><td>${esc(n.descricao)}</td><td class="r num">${brl(n.valor)}</td><td class="r num">${n.retencao?brl(liqNota(n)):"<span class='muted'>–</span>"}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
       <td><div class="row-actions">${n.status==="emitida"?`<button class="btn sm" onclick="marcarPaga('${n.id}')">Paga</button>`:""}<button class="btn sm" onclick="openNota({notaId:'${n.id}'})">Editar</button></div></td></tr>`).join("")}
-    </tbody><tfoot><tr><td colspan="3">Total faturado</td><td class="r num">${brl(r.fat)}</td><td colspan="3"></td></tr></tfoot></table></div>`
+    </tbody><tfoot><tr><td colspan="3">Total faturado</td><td class="r num">${brl(r.fat)}</td><td class="r num">${brl(sum(ns.filter(n=>n.status!=="cancelada"),liqNota))}</td><td colspan="3"></td></tr></tfoot></table></div>`
     :`<div class="empty">Nenhuma nota emitida para este contrato.</div>`;
-  return `<div class="card"><header><div><h3 style="font-size:17px"><a href="#" class="klink" onclick="selK='${c.contratanteId}';showTab('contratantes');return false">${esc(cliNome(c)||"—")}</a></h3><div class="hint">${[esc(c.empreendimento),c.proposta&&"Proposta "+esc(c.proposta),c.numContrato&&"Contrato "+esc(c.numContrato),c.data&&"assinado em "+fdate(c.data)].filter(Boolean).join(" · ")}</div></div>
+  return `<div class="card"><header><div><h3 style="font-size:17px"><a href="#" class="klink" onclick="selK='${c.contratanteId}';showTab('contratantes');return false">${esc(cliNome(c)||"—")}</a></h3><div class="hint">${[esc(c.empreendimento),c.proposta&&(c.propostaId&&pById(c.propostaId)?`<a href="#" class="klink" onclick="event.stopPropagation();goProp('${c.propostaId}');return false">Proposta ${esc(c.proposta)}</a>`:"Proposta "+esc(c.proposta)),c.numContrato&&"Contrato "+esc(c.numContrato),c.data&&"assinado em "+fdate(c.data)].filter(Boolean).join(" · ")}</div></div>
       <div class="row-actions no-print"><span class="badge ${r.st.cls}" style="align-self:center">${r.st.t}</span><button class="btn sm" onclick="openContrato('${c.id}')">Editar contrato</button></div></header>
     <div class="body">
       <div class="strip" style="margin-bottom:14px">
@@ -918,12 +935,12 @@ function renderNotas(){
         <select class="inp" onchange="fN.ano=this.value;renderNotas()"><option value="">Todos os anos</option>${anos.map(a=>`<option ${fN.ano===a?"selected":""}>${a}</option>`).join("")}</select>
       </div>
       <div class="row-actions no-print"><button class="btn sm" onclick="exportNotasCsv()">Exportar (Excel)</button><button class="btn sm primary" onclick="openNota({})">Emitir nota</button></div></header>
-    ${lista.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Contrato</th><th>Descrição</th><th class="r">Valor</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
+    ${lista.length?`<div class="tablewrap"><table><thead><tr><th>NF</th><th>Emissão</th><th>Contrato</th><th>Descrição</th><th class="r">Valor</th><th class="r">Líquido</th><th>Situação</th><th>Pagamento</th><th></th></tr></thead><tbody>
       ${lista.map(n=>`<tr style="${n.status==="cancelada"?"opacity:.55":""}"><td class="num">${esc(n.numero)}</td><td class="num">${fdate(n.data)}</td>
         <td><a href="#" onclick="goContrato('${n.contratoId}');return false">${esc(cNome(cById(n.contratoId)))}</a></td><td>${esc(n.descricao)}</td>
-        <td class="r num">${brl(n.valor)}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
+        <td class="r num">${brl(n.valor)}</td><td class="r num">${n.retencao?brl(liqNota(n)):"<span class='muted'>–</span>"}</td><td>${statusNota(n)}</td><td class="num">${n.status==="paga"?fdate(n.dataPagamento):""}</td>
         <td><div class="row-actions">${n.status==="emitida"?`<button class="btn sm" onclick="marcarPaga('${n.id}')">Paga</button>`:""}<button class="btn sm" onclick="openNota({notaId:'${n.id}'})">Editar</button></div></td></tr>`).join("")}
-      </tbody><tfoot><tr><td colspan="4">${val.length} nota(s) válidas · recebido ${brl(sum(val.filter(n=>n.status==="paga"),n=>n.valor))}</td><td class="r num">${brl(sum(val,n=>n.valor))}</td><td colspan="3"></td></tr></tfoot></table></div>`
+      </tbody><tfoot><tr><td colspan="4">${val.length} nota(s) válidas · recebido ${brl(sum(val.filter(n=>n.status==="paga"),n=>n.valor))}</td><td class="r num">${brl(sum(val,n=>n.valor))}</td><td class="r num">${brl(sum(val,liqNota))}</td><td colspan="3"></td></tr></tfoot></table></div>`
     :`<div class="empty">${state.notas.length?"Nenhuma nota neste filtro.":"Nenhuma nota emitida ainda."}</div>`}</div>`;
 }
 
@@ -965,7 +982,7 @@ function renderContratantes(){
 function detalheContratante(k){
   const r=resumoK(k);
   const linhas=r.cs.map(c=>({c,r:resumo(c)})).sort((a,b)=>(b.c.data||"").localeCompare(a.c.data||"")).map(({c,r})=>`<tr class="click" onclick="goContrato('${c.id}')">
-      <td><b>${esc(c.empreendimento||"—")}</b><div class="hint">${[c.proposta&&"Proposta "+esc(c.proposta),c.numContrato&&"Contrato "+esc(c.numContrato)].filter(Boolean).join(" · ")}</div></td>
+      <td><b>${esc(c.empreendimento||"—")}</b><div class="hint">${[c.proposta&&(c.propostaId&&pById(c.propostaId)?`<a href="#" class="klink" onclick="event.stopPropagation();goProp('${c.propostaId}');return false">Proposta ${esc(c.proposta)}</a>`:"Proposta "+esc(c.proposta)),c.numContrato&&"Contrato "+esc(c.numContrato)].filter(Boolean).join(" · ")}</div></td>
       <td class="r num">${brl(c.valor)}</td><td class="r num">${brl(r.fat)}</td><td class="r num">${brl(r.rec)}</td><td class="r num">${brl(r.saldo)}</td>
       <td style="min-width:110px">${progressBar(r)}</td><td><span class="badge ${r.st.cls}">${r.st.t}</span></td></tr>`).join("");
   return `<div class="card"><header><div><h3 style="font-size:17px">${esc(k.nome)}</h3><div class="hint">${[k.tipo&&esc(k.tipo),k.documento&&esc(k.documento),k.contato&&esc(k.contato)].filter(Boolean).join(" · ")||"&nbsp;"}</div></div>
@@ -1059,9 +1076,9 @@ async function apagarTudo(){
   const t=prompt('Isso apaga TODOS os dados do controle. Para confirmar, digite APAGAR');
   if((t||"").trim().toUpperCase()!=="APAGAR") return;
   await fsBackupNow("antes-de-apagar");
-  const d=state.disciplinas, tp=state.tiposContratante, fid=state.fileId, dp=state.despesas, ct=state.contas;
+  const d=state.disciplinas, tp=state.tiposContratante, fid=state.fileId, dp=state.despesas, ct=state.contas, rp0=state.retPadrao, ie0=state.impEst;
   state=migrate(blankState()); state.disciplinas=d; state.tiposContratante=tp; state.fileId=fid;
-  state.contas=ct;
+  state.contas=ct; state.retPadrao=rp0; state.impEst=ie0;
   Object.assign(state.despesas,{grupos:dp.grupos,categorias:dp.categorias,fixas:dp.fixas,pessoas:dp.pessoas,teto:dp.teto});
   selContrato=null; selK=null; touch(); render(); toast("Dados apagados — cópia anterior guardada em backups");
 }
@@ -1385,9 +1402,10 @@ function saveProx(id){ const c=cById(id); c.prox={data:document.getElementById("
 /* ---- formulário de nota fiscal ---- */
 let nDraft=null;
 function openNota({contratoId,notaId}){
-  const n=notaId?clone(state.notas.find(x=>x.id===notaId)):{id:uid(),contratoId:contratoId||"",numero:"",data:todayISO(),valor:0,descricao:"",status:"emitida",dataPagamento:"",rateio:{},obs:""};
+  const n=notaId?clone(state.notas.find(x=>x.id===notaId)):{id:uid(),contratoId:contratoId||"",numero:"",data:todayISO(),valor:0,descricao:"",status:"emitida",dataPagamento:"",conta:"Polis",retPct:retPadraoDe("Polis"),retencao:0,rateio:{},obs:""};
+  if(!notaId){ const pc=pById((cById(n.contratoId)||{}).propostaId||""); if(pc){ n.conta=pc.empresa; n.retPct=retPadraoDe(pc.empresa); } }
   if(!notaId && !n.contratoId){ const at=state.contratos.filter(ativo); if(at.length===1) n.contratoId=at[0].id; }
-  nDraft={n,isNew:!notaId};
+  nDraft={n,isNew:!notaId,retManual:!!notaId&&Math.abs((n.retencao||0)-r2c(n.valor*(n.retPct||0)/100))>0.01};
   const opts=state.contratos.filter(c=>!c.encerrado||c.id===n.contratoId)
     .sort((a,b)=>cNome(a).localeCompare(cNome(b),"pt-BR"))
     .map(c=>`<option value="${c.id}" ${c.id===n.contratoId?"selected":""}>${esc(cNome(c))}${c.proposta?" ("+esc(c.proposta)+")":""} — saldo ${brl(resumo(c).saldo)}</option>`).join("");
@@ -1401,14 +1419,14 @@ function openNota({contratoId,notaId}){
       <div class="field"><label>Data de emissão</label><input id="n_data" type="date" value="${n.data}"></div>
       ${pctField("n_val",'Valor da nota <span class="sub">% do contrato ou R$</span>',n.valor,"baseNota","nInfo()")}
     </div>
+    ${nRetFields(n)}
     <div class="fgrid">
       <div class="field" style="grid-column:span 2"><label>Descrição / marco <span class="sub">opcional</span></label><input id="n_desc" value="${esc(n.descricao)}" placeholder="ex.: 2ª parcela – protocolo na Prefeitura"></div>
-      <div class="field"><label>Situação</label><select id="n_st" onchange="['n_pgwrap','n_ctwrap'].forEach(i=>document.getElementById(i).style.display=this.value==='paga'?'':'none')">
+      <div class="field"><label>Situação</label><select id="n_st" onchange="document.getElementById('n_pgwrap').style.display=this.value==='paga'?'':'none'">
         <option value="emitida" ${n.status==="emitida"?"selected":""}>Aguardando pagamento</option>
         <option value="paga" ${n.status==="paga"?"selected":""}>Paga</option>
         <option value="cancelada" ${n.status==="cancelada"?"selected":""}>Cancelada</option></select></div>
       <div class="field" id="n_pgwrap" style="${n.status==="paga"?"":"display:none"}"><label>Data do pagamento</label><input id="n_dpg" type="date" value="${n.dataPagamento||todayISO()}"></div>
-      <div class="field" id="n_ctwrap" style="${n.status==="paga"?"":"display:none"}"><label>Recebido na conta</label><select id="n_ct">${[...new Set([...state.contas,n.conta||"Polis"])].map(c=>`<option ${c===(n.conta||"Polis")?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
     </div>
     <div id="n_info"></div>
     <div id="n_rateio"></div>
@@ -1425,7 +1443,7 @@ function nInfo(){
   if(!c){ el.innerHTML=""; return; }
   const v=parseMoney(document.getElementById("n_val").value), antes=nSaldoAntes(c), depois=antes-v;
   el.innerHTML=`<div class="alert ${depois<-EPS?"warn":"info"}">Saldo a faturar do contrato: <b class="num">${brl(antes)}</b> → após esta nota: <b class="num">${brl(depois)}</b>${depois<-EPS?" — a nota ultrapassa o saldo. Se houve aditivo, atualize o valor do contrato.":""}</div>`;
-  rSum();
+  rSum(); nRetCalc();
 }
 function nRefresh(){
   const c=cById(nDraft.n.contratoId);
@@ -1508,7 +1526,8 @@ function saveNota(){
   n.descricao=document.getElementById("n_desc").value.trim();
   n.status=document.getElementById("n_st").value;
   n.dataPagamento=n.status==="paga"?document.getElementById("n_dpg").value:"";
-  if(n.status==="paga") n.conta=document.getElementById("n_ct").value;
+  n.conta=document.getElementById("n_ct").value; n.retPct=parseMoney(document.getElementById("n_rp").value); n.retencao=parseMoney(document.getElementById("n_rv").value);
+  if(n.retencao-n.valor>EPS){ toast("A retenção é maior que o valor da nota"); return; }
   n.obs=document.getElementById("n_obs").value.trim();
   const r={}; modal.querySelectorAll(".rv").forEach(i=>{ const x=parseMoney(i.value); if(x) r[i.dataset.id]=x; });
   if(sum(Object.values(r),x=>x)-n.valor>EPS){ toast("O rateio por disciplina passa do valor da nota"); return; }
@@ -1646,7 +1665,7 @@ function tabelaLanc(ls,acoes=true){
   if(!ls.length) return `<div class="empty">Nenhum lançamento.</div>`;
   return `<div class="tablewrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Pago por</th><th class="r">Valor</th>${acoes?"<th></th>":""}</tr></thead><tbody>
   ${ls.map(l=>`<tr><td class="num">${fdate(l.data)}</td><td>${esc(catNome(l.categoriaId))}<div class="hint">${esc((grpById(grpDaCat(l.categoriaId))||{}).nome||"")}</div></td>
-    <td>${esc(l.descricao)} ${reembBadge(l)}${l.obs&&!/^Importado do Excel$/.test(l.obs)?`<div class="hint">${esc(l.obs)}</div>`:""}</td><td>${esc(l.pagoPor)}</td><td class="r num">${brl(l.valor)}</td>
+    <td>${esc(l.descricao)} ${reembBadge(l)}${l.auto?` <span class="badge b-mut" title="Gerado pela nota fiscal">automático</span>`:""}${l.obs&&!/^Importado do Excel$/.test(l.obs)?`<div class="hint">${esc(l.obs)}</div>`:""}</td><td>${esc(l.pagoPor)}</td><td class="r num">${brl(l.valor)}</td>
     ${acoes?`<td><div class="row-actions">${l.reembolso==="pendente"?`<button class="btn sm" onclick="marcarReemb('${l.id}')">Reembolsado</button>`:""}<button class="btn sm" onclick="openLanc({copia:'${l.id}'})" title="Lançar outro igual">Duplicar</button><button class="btn sm" onclick="openLanc({id:'${l.id}'})">Editar</button></div></td>`:""}</tr>`).join("")}
   </tbody><tfoot><tr><td colspan="4">${ls.length} lançamento(s)</td><td class="r num">${brl(sum(ls,l=>l.valor))}</td>${acoes?"<td></td>":""}</tr></tfoot></table></div>`;
 }
@@ -1683,8 +1702,9 @@ function exportLancCsv(){
 let lDraft=null;
 function openLanc({id,copia,preset}){
   const base=id?D().lancamentos.find(x=>x.id===id):copia?D().lancamentos.find(x=>x.id===copia):null;
+  if(id&&base&&base.auto==="ret"){ if(state.notas.some(n=>n.id===base.nfId)){ openNota({notaId:base.nfId}); toast("Esta retenção é automática: altere pela nota fiscal"); return; } }
   const l=base?clone(base):{data:todayISO(),categoriaId:"",descricao:"",valor:0,pagoPor:"Polis",reembolso:"",dataReembolso:"",obs:"",fixaId:""};
-  if(copia){ l.id=undefined; l.data=todayISO(); l.fixaId=""; if(l.pagoPor!=="Polis"){ l.reembolso="pendente"; l.dataReembolso=""; } l.obs=""; }
+  if(copia){ l.id=undefined; l.auto=""; l.nfId=""; l.data=todayISO(); l.fixaId=""; if(l.pagoPor!=="Polis"){ l.reembolso="pendente"; l.dataReembolso=""; } l.obs=""; }
   if(preset) Object.assign(l,preset);
   lDraft={l,isNew:!id};
   const pessoas=[...new Set([...D().pessoas,l.pagoPor])];
@@ -2096,6 +2116,8 @@ const RELF={
         rows.map(r=>[mesNome(r.m),r.nf?brl(r.nf):"—",r.cob?brl(r.cob):"—",brl(r.e),brl(r.s.v),`<span class="hint">${r.s.f}</span>`,`<span class="${r.r<-EPS?"neg":""}">${brl(r.r)}</span>`,`<span class="${r.acc<-EPS?"neg":""}">${brl(r.acc)}</span>`]),
         ["Total",brl(sum(rows,r=>r.nf)),brl(sum(rows,r=>r.cob)),brl(sum(rows,r=>r.e)),brl(sum(rows,r=>r.s.v)),"",brl(sum(rows,r=>r.r)),""])}
       <div class="alert info" style="margin-top:12px">Saldo a faturar dos contratos: <b>${brl(saldoFat)}</b>, dos quais <b>${brl(Math.max(0,saldoFat-prev))}</b> ainda sem cobrança prevista${semData?` e ${brl(semData)} com cobrança sem data`:""}${semValor?` · ${semValor} cobrança(s) prevista(s) sem valor`:""}. Cada contrato tem uma só "próxima cobrança", então o fluxo dos meses mais distantes tende a mostrar menos entradas do que vão acontecer.</div>
+      ${(()=>{ const ab=state.propostas.filter(pAberta), dec=state.propostas.filter(p=>p.status==="aceita"||p.status==="recusada"), tx=dec.length>=5?state.propostas.filter(p=>p.status==="aceita").length/dec.length:null;
+        return ab.length?`<div class="alert info" style="margin-top:10px">Potencial ainda não contratado: <b>${ab.length}</b> proposta(s) em aberto somando <b>${brl(sum(ab,p=>p.valor))}</b>${tx!==null?` · pela taxa de aceite (${pctFmt(tx*100)}%), cerca de <b>${brl(sum(ab,p=>p.valor)*tx)}</b>`:""}. Não entra nas contas acima.</div>`:""; })()}
       <h4>Entradas previstas</h4>${tabela([{t:"Mês"},{t:"Origem"},{t:"Contrato"},{t:"Valor",r:1}],det.filter(d=>meses.includes(d[0])).sort((a,b)=>a[0].localeCompare(b[0])).map(d=>[mesNome(d[0]),esc(d[1]),esc(d[2]),brl(d[3])]))}`;
     const csv=[["FLUXO DE CAIXA PREVISTO",fdate(hoje)],["Mês","Notas emitidas","Cobranças previstas","Entradas","Saídas","Base das saídas","Resultado","Acumulado"],...rows.map(r=>[mesNome(r.m),nf2(r.nf),nf2(r.cob),nf2(r.e),nf2(r.s.v),r.s.f,nf2(r.r),nf2(r.acc)])];
     return {titulo:"Fluxo de caixa previsto",sub:`Próximos ${N} meses a partir de ${mesNome(m0)}`,html,csv};
@@ -2208,16 +2230,21 @@ function renderFEnt(){
       <button class="btn sm" onclick="entCsv()">Exportar (Excel)</button></div></header>
     ${lista.length?`<div class="tablewrap"><table><thead><tr><th>Data</th><th>Cliente / origem</th><th>Conta</th><th>Registro</th><th class="r">Valor</th><th></th></tr></thead><tbody>
       ${lista.map(r=>`<tr style="${r.fonte==="dup"?"opacity:.55":""}"><td class="num">${fdate(r.data)}</td><td>${esc(r.origem)}${r.ref.obs?`<div class="hint">${esc(r.ref.obs)}</div>`:""}</td><td>${esc(r.conta)}</td><td>${fonteTxt(r)}</td>
-        <td class="r num">${brl(r.valor)}</td><td><div class="row-actions">${r.fonte==="nf"?`<button class="btn sm" onclick="openNota({notaId:'${r.ref.id}'})">Ver nota</button>`:`<button class="btn sm" onclick="openEnt('${r.ref.id}')">Editar</button>`}</div></td></tr>`).join("")}</tbody>
+        <td class="r num">${brl(r.valor)}${r.fonte==="nf"&&r.ref.retencao?`<div class="hint">líquido ${brl(liqNota(r.ref))}</div>`:""}</td><td><div class="row-actions">${r.fonte==="nf"?`<button class="btn sm" onclick="openNota({notaId:'${r.ref.id}'})">Ver nota</button>`:`<button class="btn sm" onclick="openEnt('${r.ref.id}')">Editar</button>`}</div></td></tr>`).join("")}</tbody>
       <tfoot><tr><td colspan="4">${lista.filter(r=>r.fonte!=="dup").length} recebimento(s)</td><td class="r num">${brl(sum(lista.filter(r=>r.fonte!=="dup"),r=>r.valor))}</td><td></td></tr></tfoot></table></div>`
       :`<div class="empty">Nenhum recebimento neste filtro.</div>`}</div>
-  <div class="card" style="max-width:640px"><header><div><h3>Contas de recebimento</h3><p class="hint">Onde o dinheiro entra. Aparece nas entradas e na nota fiscal, ao marcar como paga.</p></div></header>
-    <div class="body">${state.contas.map((c,i)=>`<div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" value="${esc(c)}" ${i===0?"disabled":""} onchange="renConta(${i},this.value)">${i===0?"<span></span>":`<button class="btn sm danger" onclick="state.contas.splice(${i},1);touch();renderFEnt()">Remover</button>`}</div>`).join("")}
-      <div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" id="nct" placeholder="Nova conta (ex.: Sem NF)" onkeydown="if(event.key==='Enter')addConta()"><button class="btn sm" onclick="addConta()">Adicionar</button></div></div></div>`;
+  <div class="card" style="max-width:860px"><header><div><h3>Empresas emissoras / contas</h3><p class="hint">Quem emite a nota e onde o dinheiro entra. A retenção padrão vem preenchida em cada nota nova (dá para mudar na nota); o imposto estimado calcula o líquido das propostas.</p></div></header>
+    <div class="body"><div class="custom-row hint" style="grid-template-columns:1fr 130px 150px auto;margin-bottom:4px"><span>Empresa / conta</span><span>Retenção padrão</span><span>Imposto estimado (propostas)</span><span></span></div>
+      ${state.contas.map((c,i)=>`<div class="custom-row" style="grid-template-columns:1fr 130px 150px auto"><input class="inp" value="${esc(c)}" ${i===0?"disabled":""} onchange="renConta(${i},this.value)">
+        <div class="pctin"><input class="inp money" value="${pctFmt(retPadraoDe(c))}" onchange="state.retPadrao[state.contas[${i}]]=parseMoney(this.value);touch();renderFEnt()"><span>%</span></div>
+        <div class="pctin"><input class="inp money" value="${pctFmt(impEstDe(c))}" onchange="state.impEst[state.contas[${i}]]=parseMoney(this.value);touch();renderFEnt()"><span>%</span></div>
+        ${i===0?"<span></span>":`<button class="btn sm danger" onclick="state.contas.splice(${i},1);touch();renderFEnt()">Remover</button>`}</div>`).join("")}
+      <div class="custom-row" style="grid-template-columns:1fr auto"><input class="inp" id="nct" placeholder="Nova empresa / conta (ex.: Sem NF)" onkeydown="if(event.key==='Enter')addConta()"><button class="btn sm" onclick="addConta()">Adicionar</button></div></div></div>`;
   window._entLista=lista;
 }
 function addConta(){ const v=$("nct").value.trim(); if(!v||state.contas.includes(v)) return; state.contas.push(v); touch(); renderFEnt(); }
 function renConta(i,v){ v=v.trim(); if(!v) return renderFEnt(); const old=state.contas[i]; state.contas[i]=v;
+  [state.retPadrao,state.impEst].forEach(m=>{ if(old in m){ m[v]=m[old]; delete m[old]; } }); state.propostas.forEach(p=>{ if(p.empresa===old) p.empresa=v; });
   state.entradas.forEach(e=>{ if(e.conta===old) e.conta=v; }); state.notas.forEach(n=>{ if(n.conta===old) n.conta=v; }); touch(); }
 function entCsv(){ downloadCsv(`recebimentos_${todayISO()}.csv`,[["Data","Cliente / origem","Conta","Registro","Valor","Observações"],
   ...(window._entLista||[]).slice().reverse().map(r=>[fdate(r.data),r.origem,r.conta,r.fonte==="nf"?"NF "+r.ref.numero:r.fonte==="dup"?"Duplicada (não somada)":"Entrada sem nota no app",nf2(r.valor),r.ref.obs||""])]); }
@@ -2252,7 +2279,7 @@ async function importarEntradas(o){
   const usadas=new Set(state.entradas.map(e=>e.nfId).filter(Boolean)), novas=[];
   (o.entradas||[]).forEach(x=>{
     const e={id:uid(),data:x.data,origem:x.origem||"",valor:+x.valor||0,conta:x.conta||"Polis",obs:x.obs||"",nfId:"",importado:true,lote};
-    const nf=nfPagas().find(n=>!usadas.has(n.id)&&Math.abs(n.valor-e.valor)<=0.05&&Math.abs(daysBetween(n.dataPagamento,e.data))<=7);
+    const nf=nfPagas().find(n=>!usadas.has(n.id)&&(Math.abs(n.valor-e.valor)<=0.05||Math.abs(liqNota(n)-e.valor)<=0.05)&&Math.abs(daysBetween(n.dataPagamento,e.data))<=7);
     if(nf){ e.nfId=nf.id; usadas.add(nf.id); }
     novas.push(e);
   });
@@ -2268,15 +2295,265 @@ async function importarEntradas(o){
   <footer><button class="btn primary" onclick="closeModal()">Ok</button></footer>`);
 }
 
+/* ================= RETENÇÃO NA FONTE =================
+   Cada nota tem empresa emissora (conta), % de retenção e valor retido.
+   Nota paga com retenção gera, sozinha, um lançamento de despesa na categoria
+   "Impostos retidos na fonte" (id ret-<nota>), na data do pagamento. */
+const CAT_RET="c-ret";
+const retPadraoDe=conta=>{ const m=state.retPadrao||{}; const k=Object.keys(m).find(x=>norm(x)===norm(conta)); return k!==undefined?+m[k]||0:(norm(conta)==="polis"?6.15:0); };
+const impEstDe=conta=>{ const m=state.impEst||{}; const k=Object.keys(m).find(x=>norm(x)===norm(conta)); return k!==undefined?+m[k]||0:(norm(conta)==="polis"?13.3:9); };
+const r2c=v=>Math.round((+v||0)*100)/100;
+const liqNota=n=>r2c((n.valor||0)-(n.retencao||0));
+function catRetencao(){
+  const d=D(); let c=d.categorias.find(x=>x.id===CAT_RET); if(c) return c;
+  let g=d.grupos.find(x=>x.id==="g-imp")||d.grupos.find(x=>/impost/i.test(x.nome));
+  if(!g){ g={id:"g-imp",nome:"Impostos"}; d.grupos.push(g); }
+  c={id:CAT_RET,grupoId:g.id,nome:"Impostos retidos na fonte",ativa:true}; d.categorias.push(c); return c;
+}
+function syncRetencoes(){
+  const d=D(), deve=new Map(); let mud=false;
+  state.notas.forEach(n=>{ if(n.status==="paga"&&n.dataPagamento&&(n.retencao||0)>0) deve.set("ret-"+n.id,n); });
+  if(deve.size&&!d.categorias.some(c=>c.id===CAT_RET)){ catRetencao(); mud=true; }
+  d.lancamentos=d.lancamentos.filter(l=>{ if(l.auto!=="ret"||deve.has(l.id)) return true; mud=true; return false; });
+  deve.forEach((n,id)=>{
+    const c=cById(n.contratoId);
+    const alvo={id,data:n.dataPagamento,categoriaId:CAT_RET,descricao:`Retenção NF ${n.numero||"s/nº"}${c?" – "+cliNome(c):""}`,valor:r2c(n.retencao),
+      pagoPor:"Polis",reembolso:"",dataReembolso:"",obs:`Automático: retido pelo cliente na NF ${n.numero||""} (${pctFmt(n.retPct||0)}% de ${brl(n.valor)}). Para alterar, edite a nota.`,fixaId:"",auto:"ret",nfId:n.id};
+    const i=d.lancamentos.findIndex(l=>l.id===id);
+    if(i<0){ d.lancamentos.push(alvo); mud=true; } else if(!jeq(d.lancamentos[i],alvo)){ d.lancamentos[i]=alvo; mud=true; }
+  });
+  return mud;
+}
+/* formulário da nota */
+function nRetCalc(){
+  const v=parseMoney(($("n_val")||{}).value), p=parseMoney(($("n_rp")||{}).value);
+  if(!nDraft.retManual&&$("n_rv")) $("n_rv").value=v&&p?nf2(r2c(v*p/100)):"";
+  const rv=parseMoney(($("n_rv")||{}).value), el=$("n_liq");
+  if(el) el.innerHTML=`<b class="num">${brl(v-rv)}</b>${rv?`<span class="hint"> · retido ${brl(rv)}</span>`:""}`;
+}
+function nRetPct(){ nDraft.retManual=false; nRetCalc(); }
+function nRetVal(){ nDraft.retManual=true; const v=parseMoney($("n_val").value), rv=parseMoney($("n_rv").value); $("n_rp").value=v&&rv?pctFmt(rv/v*100):"0"; nRetCalc(); }
+function nEmp(){ $("n_rp").value=pctFmt(retPadraoDe($("n_ct").value)); nDraft.retManual=false; nRetCalc(); }
+function nRetFields(n){
+  const contas=[...new Set([...state.contas,n.conta||"Polis"])];
+  return `<div class="fgrid">
+    <div class="field"><label>Empresa emissora</label><select id="n_ct" onchange="nEmp()">${contas.map(c=>`<option ${c===(n.conta||"Polis")?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+    <div class="field"><label>Retenção na fonte <span class="sub">IRRF + PIS/COFINS/CSLL</span></label><div class="pctpair"><div class="pctin"><input id="n_rp" class="money" inputmode="decimal" value="${pctFmt(n.retPct||0)}" oninput="nRetPct()"><span>%</span></div>
+      <input id="n_rv" class="money" inputmode="decimal" value="${mv(n.retencao)}" placeholder="R$ 0,00" oninput="nRetVal()"></div></div>
+    <div class="field"><label>Valor líquido a receber</label><div class="liqbox" id="n_liq"></div></div></div>`;
+}
+
+/* ================= PROPOSTAS ================= */
+const P_ST=[["enviada","Enviada","b-info"],["negociacao","Em negociação","b-warn"],["aceita","Aceita","b-ok"],["recusada","Recusada","b-red"],["cancelada","Cancelada","b-mut"]];
+const stInfo=k=>P_ST.find(x=>x[0]===k)||P_ST[0];
+const pAberta=p=>p.status==="enviada"||p.status==="negociacao";
+const propLabel=p=>`${p.numero}/${p.ano}`;
+const pById=id=>state.propostas.find(p=>p.id===id);
+const nextNumProp=ano=>Math.max(0,...state.propostas.filter(p=>p.ano===+ano).map(p=>+p.numero||0))+1;
+const pLiq=p=>r2c((p.valor||0)*(1-impEstDe(p.empresa)/100));
+const pCont=p=>p.contratoId&&cById(p.contratoId);
+let fPr={ano:anoNow(),st:"aberto",kid:"",q:""}, pSel=new Set();
+function goProp(id){ const p=pById(id); if(!p) return; fPr={ano:String(p.ano),st:"todas",kid:"",q:propLabel(p)}; setMode("rec"); showTab("propostas"); }
+function renderPropostas(){
+  const el=$("panel-propostas"), hoje=todayISO();
+  const anos=[...new Set([anoNow(),...state.propostas.map(p=>String(p.ano))])].sort().reverse();
+  const doAno=state.propostas.filter(p=>!fPr.ano||String(p.ano)===fPr.ano);
+  const q=norm(fPr.q);
+  const lista=doAno.filter(p=>(fPr.st==="todas"||(fPr.st==="aberto"?pAberta(p):p.status===fPr.st))&&(!fPr.kid||p.contratanteId===fPr.kid)
+      &&(!q||norm(propLabel(p)+" "+(kById(p.contratanteId)||{}).nome+" "+p.obra+" "+p.servico+" "+p.obs).includes(q)))
+    .sort((a,b)=>b.ano-a.ano||b.numero-a.numero);
+  const val=doAno.filter(p=>p.status!=="cancelada"), ab=val.filter(pAberta), ac=val.filter(p=>p.status==="aceita"), rc=val.filter(p=>p.status==="recusada");
+  const vAc=sum(ac,p=>p.valorAceito||p.valor), dec=ac.length+rc.length;
+  const velhas=ab.filter(p=>p.data&&daysBetween(p.data,hoje)>30);
+  const dias=ac.concat(rc).filter(p=>p.data&&p.dataDecisao).map(p=>daysBetween(p.data,p.dataDecisao));
+  const porK={}; val.forEach(p=>{ const o=porK[p.contratanteId]=porK[p.contratanteId]||{n:0,v:0,a:0,va:0,r:0}; o.n++; o.v+=p.valor; if(p.status==="aceita"){ o.a++; o.va+=p.valorAceito||p.valor; } if(p.status==="recusada") o.r++; });
+  const kRows=Object.entries(porK).map(([id,o])=>({k:kById(id)||{nome:"(sem contratante)"},...o})).sort((a,b)=>b.v-a.v);
+  const acoes=p=>{ const c=pCont(p);
+    if(pAberta(p)) return `<button class="btn sm primary" onclick="aceitarProp('${p.id}')">Aceitar</button><button class="btn sm" onclick="recusarProp('${p.id}')">Recusar</button>`;
+    if(p.status==="aceita") return c?`<button class="btn sm" onclick="goContrato('${c.id}')">Ver contrato</button>`:`<button class="btn sm primary" onclick="aceitarProp('${p.id}')">Criar contrato</button>`;
+    return ""; };
+  el.innerHTML=`<div class="strip">
+    <div class="chip"><span class="k">Propostas ${fPr.ano||"(todos os anos)"}</span><span class="v">${val.length}</span><span class="u">${brl(sum(val,p=>p.valor))} propostos</span></div>
+    <div class="chip hl"><span class="k">Em aberto</span><span class="v">${ab.length}</span><span class="u">${brl(sum(ab,p=>p.valor))}${velhas.length?` · ${velhas.length} há mais de 30 dias`:""}</span></div>
+    <div class="chip good"><span class="k">Aceitas</span><span class="v">${ac.length}</span><span class="u">${brl(vAc)}</span></div>
+    <div class="chip"><span class="k">Taxa de aceite</span><span class="v">${dec?pctFmt(ac.length/dec*100)+"%":"—"}</span><span class="u">${dec?`das ${dec} decididas · ${pctFmt(vAc/Math.max(1,vAc+sum(rc,p=>p.valor))*100)}% em valor`:"nenhuma decidida ainda"}</span></div>
+    <div class="chip"><span class="k">Tempo até a decisão</span><span class="v">${dias.length?Math.round(sum(dias,x=>x)/dias.length)+" dias":"—"}</span><span class="u">${dias.length?"média":"sem datas de decisão"}</span></div>
+  </div>
+  <div class="card"><header style="flex-direction:column;align-items:stretch;gap:10px">
+    <div class="toolbar"><input class="inp" style="flex:1" placeholder="Buscar nº, contratante, obra, serviço" value="${esc(fPr.q)}" oninput="fPr.q=this.value;renderPropostas();this.focus();this.setSelectionRange(this.value.length,this.value.length)">
+      <div class="row-actions"><button class="btn sm" onclick="propCsv()">Exportar (Excel)</button><button class="btn sm primary" onclick="openProp()">Nova proposta</button></div></div>
+    <div class="toolbar"><select class="inp" onchange="fPr.ano=this.value;renderPropostas()">${sel(fPr.ano,anos.map(a=>[a,a]),"Todos os anos")}</select>
+      <div class="seg">${[["aberto","Em aberto"],...P_ST.map(([k,t])=>[k,t]),["todas","Todas"]].map(([k,t])=>`<button class="${fPr.st===k?"on":""}" onclick="fPr.st='${k}';renderPropostas()">${t}</button>`).join("")}</div>
+      <select class="inp" onchange="fPr.kid=this.value;renderPropostas()"><option value="">Todos os contratantes</option>${state.contratantes.filter(k=>state.propostas.some(p=>p.contratanteId===k.id)).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(k=>`<option value="${k.id}" ${fPr.kid===k.id?"selected":""}>${esc(k.nome)}</option>`).join("")}</select></div></header>
+    ${pSel.size?`<div class="bulkbar"><b>${pSel.size} selecionada(s)</b><span class="hint">marcar como</span>
+      ${[["negociacao","Em negociação"],["recusada","Recusada"],["cancelada","Cancelada"],["aceita","Aceita (sem criar contrato)"],["enviada","Enviada"]].map(([k,t])=>`<button class="btn sm" onclick="propLote('${k}')">${t}</button>`).join("")}
+      <button class="btn sm link" onclick="pSel.clear();renderPropostas()">limpar seleção</button></div>`:""}
+    ${lista.length?`<div class="tablewrap"><table><thead><tr><th style="width:28px"><input type="checkbox" title="Selecionar todas da lista" ${lista.every(p=>pSel.has(p.id))?"checked":""} onchange="lista_sel(this.checked)"></th><th>Nº</th><th>Data</th><th>Contratante</th><th>Obra</th><th>Serviço</th><th>Empresa</th><th class="r">Valor</th><th class="r">Líquido est.</th><th>Situação</th><th></th></tr></thead><tbody>
+      ${lista.map(p=>{ const [,t,cls]=stInfo(p.status), d=pAberta(p)&&p.data?daysBetween(p.data,hoje):null;
+        return `<tr class="${pSel.has(p.id)?"selrow":""}"><td><input type="checkbox" ${pSel.has(p.id)?"checked":""} onchange="this.checked?pSel.add('${p.id}'):pSel.delete('${p.id}');renderPropostas()"></td><td class="num"><b>${propLabel(p)}</b></td><td class="num">${fdate(p.data)}</td><td>${esc((kById(p.contratanteId)||{}).nome||"—")}</td><td>${esc(p.obra)}</td>
+        <td>${esc(p.servico)}${p.obs?`<div class="hint">${esc(p.obs)}</div>`:""}</td><td>${esc(p.empresa)}</td><td class="r num">${brl(p.valor)}${p.status==="aceita"&&p.valorAceito&&Math.abs(p.valorAceito-p.valor)>EPS?`<div class="hint">aceito ${brl(p.valorAceito)}</div>`:""}</td><td class="r num">${brl(pLiq(p))}</td>
+        <td><span class="badge ${cls}">${t}</span>${d!==null?`<div class="hint ${d>30?"neg":""}">há ${d} dia(s)</div>`:p.dataDecisao?`<div class="hint">${fdate(p.dataDecisao)}</div>`:""}</td>
+        <td><div class="row-actions">${acoes(p)}<button class="btn sm" onclick="openProp('${p.id}')">Editar</button></div></td></tr>`; }).join("")}</tbody>
+      <tfoot><tr><td colspan="7">${lista.length} proposta(s)</td><td class="r num">${brl(sum(lista,p=>p.valor))}</td><td class="r num">${brl(sum(lista,pLiq))}</td><td colspan="2"></td></tr></tfoot></table></div>`
+      :`<div class="empty">${state.propostas.length?"Nenhuma proposta neste filtro.":`Nenhuma proposta cadastrada. <div style="margin-top:10px"><button class="btn primary" onclick="openProp()">Nova proposta</button> <button class="btn" onclick="$('fileInput').click()">Importar propostas</button></div>`}</div>`}</div>
+  ${kRows.length?`<div class="card"><header><h3>Por contratante ${fPr.ano?"· "+fPr.ano:""}</h3></header><div class="tablewrap"><table><thead><tr><th>Contratante</th><th class="r">Propostas</th><th class="r">Valor proposto</th><th class="r">Aceitas</th><th class="r">Valor aceito</th><th class="r">Taxa de aceite</th></tr></thead><tbody>
+    ${kRows.map(x=>`<tr><td>${esc(x.k.nome)}</td><td class="r num">${x.n}</td><td class="r num">${brl(x.v)}</td><td class="r num">${x.a}</td><td class="r num">${brl(x.va)}</td><td class="r num">${x.a+x.r?pctFmt(x.a/(x.a+x.r)*100)+"%":"—"}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
+  window._propLista=lista;
+}
+function lista_sel(on){ (window._propLista||[]).forEach(p=>on?pSel.add(p.id):pSel.delete(p.id)); renderPropostas(); }
+function propLote(st){
+  const ps=[...pSel].map(pById).filter(Boolean); if(!ps.length) return;
+  const t=stInfo(st)[1], d=["aceita","recusada","cancelada"].includes(st)?(prompt(`Data da decisão para as ${ps.length} proposta(s) (dd/mm/aaaa) — deixe em branco para a data de hoje:`,"")):"";
+  if(d===null) return;
+  const m=String(d||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/), dd=m?`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`:todayISO();
+  ps.forEach(p=>{ p.status=st; p.dataDecisao=["aceita","recusada","cancelada"].includes(st)?(p.dataDecisao||dd):""; if(st==="aceita") p.valorAceito=p.valorAceito||p.valor; else if(!pCont(p)) p.valorAceito=0; });
+  pSel.clear(); touch(); render(); toast(`${ps.length} proposta(s) marcada(s) como ${t.toLowerCase()}`);
+}
+function propCsv(){ downloadCsv(`propostas_${todayISO()}.csv`,[["Nº","Data","Contratante","Obra","Serviço","Disciplinas","Empresa","Valor","Líquido estimado","Situação","Data decisão","Valor aceito","Contrato","Obs."],
+  ...(window._propLista||[]).slice().reverse().map(p=>[propLabel(p),fdate(p.data),(kById(p.contratanteId)||{}).nome||"",p.obra,p.servico,p.disciplinas.join(", "),p.empresa,nf2(p.valor),nf2(pLiq(p)),stInfo(p.status)[1],p.dataDecisao?fdate(p.dataDecisao):"",p.valorAceito?nf2(p.valorAceito):"",pCont(p)?cNome(pCont(p)):"",p.obs])]); }
+let pDraft=null;
+function openProp(id){
+  const p=id?clone(pById(id)):{ano:+anoNow(),numero:nextNumProp(anoNow()),data:todayISO(),contratanteId:"",obra:"",servico:"",disciplinas:[],empresa:"Polis",valor:0,status:"enviada",dataDecisao:"",valorAceito:0,contratoId:"",obs:""};
+  pDraft={p,isNew:!id};
+  const c=pCont(p), decidida=["aceita","recusada","cancelada"].includes(p.status);
+  openModal(`<header><h3>${id?"Proposta "+propLabel(p):"Nova proposta"}</h3><button class="xbtn" onclick="closeModal()" aria-label="Fechar">×</button></header>
+  <div class="body">
+    <div class="fgrid">
+      <div class="field"><label>Nº da proposta</label><div class="pctpair" style="grid-template-columns:1fr 70px"><input id="p_num" class="money" inputmode="numeric" value="${p.numero}"><div class="liqbox num" id="p_ano" style="text-align:center">/${p.ano}</div></div></div>
+      <div class="field"><label>Data</label><input id="p_data" type="date" value="${p.data}" onchange="pAnoChange()"></div>
+      <div class="field"><label>Empresa</label><select id="p_emp" onchange="pLiqUpd()">${sel(p.empresa,[...new Set([...state.contas,p.empresa])].map(x=>[x,x]))}</select></div>
+    </div>
+    <div class="fgrid">
+      <div class="field"><label>Contratante</label><select id="p_k" onchange="$('p_novoK').style.display=this.value==='__novo'?'':'none'"><option value="">Selecione…</option>${kOptions(p.contratanteId)}<option value="__novo">+ Cadastrar novo contratante…</option></select></div>
+      <div class="field"><label>Obra / empreendimento</label><input id="p_obra" value="${esc(p.obra)}"></div>
+    </div>
+    <div class="fgrid novok" id="p_novoK" style="display:none"><div class="field"><label>Nome do novo contratante</label><input id="p_nk"></div><div class="field"><label>Tipo</label><select id="p_nkt">${tipoOpts("")}</select></div></div>
+    <div class="field"><label>Serviço</label><input id="p_serv" value="${esc(p.servico)}" placeholder="ex.: Terraplenagem e drenagem"></div>
+    <div class="field"><label>Disciplinas <span class="sub">vão para o contrato quando a proposta for aceita</span></label>
+      <div class="chipsel">${[...new Set([...state.disciplinas,...p.disciplinas])].map((d,i)=>`<label class="${p.disciplinas.includes(d)?"on":""}"><input type="checkbox" class="p_dc" value="${esc(d)}" ${p.disciplinas.includes(d)?"checked":""} onchange="this.parentNode.classList.toggle('on',this.checked)">${esc(d)}</label>`).join("")}</div></div>
+    <div class="fgrid">
+      <div class="field"><label>Valor da proposta (R$)</label><input id="p_val" class="money" inputmode="decimal" value="${mv(p.valor)}" oninput="pLiqUpd()"></div>
+      <div class="field"><label>Líquido estimado <span class="sub" id="p_liqpct"></span></label><div class="liqbox num" id="p_liq"></div></div>
+      <div class="field"><label>Situação</label><select id="p_st" onchange="$('p_decw').style.display=['aceita','recusada','cancelada'].includes(this.value)?'':'none';$('p_vaw').style.display=this.value==='aceita'?'':'none'">${sel(p.status,P_ST.map(([k,t])=>[k,t]))}</select></div>
+    </div>
+    <div class="fgrid">
+      <div class="field" id="p_decw" style="${decidida?"":"display:none"}"><label>Data da decisão</label><input id="p_dd" type="date" value="${p.dataDecisao||todayISO()}"></div>
+      <div class="field" id="p_vaw" style="${p.status==="aceita"?"":"display:none"}"><label>Valor aceito (R$)</label><input id="p_va" class="money" inputmode="decimal" value="${mv(p.valorAceito||p.valor)}"></div>
+    </div>
+    <div class="field"><label>Observações</label><textarea id="p_obs" placeholder="ex.: cliente pediu para rever o valor; unificada com a proposta 10">${esc(p.obs)}</textarea></div>
+    ${c?`<div class="alert info">Contrato vinculado: <a href="#" onclick="closeModal();goContrato('${c.id}');return false">${esc(cNome(c))}</a></div>`:""}
+  </div>
+  <footer>${id?`<button class="btn danger" style="margin-right:auto" onclick="delProp('${id}')">Excluir</button>`:""}
+    <button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="saveProp()">${id?"Salvar":"Cadastrar proposta"}</button></footer>`);
+  pLiqUpd();
+}
+function pAnoChange(){ const a=+($("p_data").value||todayISO()).slice(0,4); if(a===pDraft.p.ano) return; pDraft.p.ano=a; $("p_ano").textContent="/"+a; if(pDraft.isNew) $("p_num").value=nextNumProp(a); }
+function pLiqUpd(){ const e=$("p_emp").value, v=parseMoney($("p_val").value), pc=impEstDe(e); $("p_liq").textContent=brl(v*(1-pc/100)); $("p_liqpct").textContent=`(− ${pctFmt(pc)}% de impostos)`; }
+function pResolveK(sel,nomeEl,tipoEl){
+  let kid=$(sel).value;
+  if(kid!=="__novo") return kid;
+  const nome=$(nomeEl).value.trim(); if(!nome){ toast("Informe o nome do novo contratante"); return null; }
+  const ex=state.contratantes.find(k=>norm(k.nome)===norm(nome)); if(ex) return ex.id;
+  const k={id:uid(),nome,tipo:$(tipoEl).value,documento:"",contato:"",obs:""}; state.contratantes.push(k); return k.id;
+}
+function saveProp(){
+  const p=pDraft.p;
+  p.numero=parseInt($("p_num").value,10); p.data=$("p_data").value; p.ano=+(p.data||todayISO()).slice(0,4);
+  if(!(p.numero>0)){ toast("Informe o número da proposta"); return; }
+  if(state.propostas.some(x=>x.id!==p.id&&x.ano===p.ano&&x.numero===p.numero)&&!confirm(`Já existe a proposta ${p.numero}/${p.ano}. Salvar mesmo assim?`)) return;
+  const kid=pResolveK("p_k","p_nk","p_nkt"); if(kid===null) return; if(!kid){ toast("Selecione o contratante"); return; }
+  p.contratanteId=kid; p.obra=$("p_obra").value.trim(); p.servico=$("p_serv").value.trim();
+  p.disciplinas=[...modal.querySelectorAll(".p_dc:checked")].map(x=>x.value);
+  p.empresa=$("p_emp").value; p.valor=parseMoney($("p_val").value); p.obs=$("p_obs").value.trim();
+  const st=$("p_st").value, eraAceita=p.status==="aceita"; p.status=st;
+  p.dataDecisao=["aceita","recusada","cancelada"].includes(st)?$("p_dd").value:"";
+  p.valorAceito=st==="aceita"?parseMoney($("p_va").value)||p.valor:0;
+  if(pDraft.isNew){ p.id=uid(); state.propostas.push(p); } else state.propostas[state.propostas.findIndex(x=>x.id===p.id)]=p;
+  touch(); closeModal(); render();
+  if(st==="aceita"&&!pCont(p)&&!eraAceita) aceitarProp(p.id); else toast(`Proposta ${propLabel(p)} ${pDraft.isNew?"cadastrada":"atualizada"}`);
+}
+function delProp(id){ const p=pById(id); if(!confirm(`Excluir a proposta ${propLabel(p)}?${pCont(p)?" O contrato vinculado não é excluído.":""}`)) return;
+  state.propostas=state.propostas.filter(x=>x.id!==id); state.contratos.forEach(c=>{ if(c.propostaId===id) c.propostaId=""; }); touch(); closeModal(); render(); }
+function aceitarProp(id){
+  const p=pById(id), k=kById(p.contratanteId);
+  openModal(`<header><h3>Aceitar proposta ${propLabel(p)}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><p style="margin-top:0"><b>${esc(k?k.nome:"—")}</b> · ${esc(p.obra)} · ${esc(p.servico)}</p>
+    <div class="fgrid"><div class="field"><label>Data do aceite</label><input id="pa_d" type="date" value="${p.dataDecisao||todayISO()}"></div>
+      <div class="field"><label>Valor aceito (R$) <span class="sub">se mudou na negociação</span></label><input id="pa_v" class="money" inputmode="decimal" value="${mv(p.valorAceito||p.valor)}"></div></div>
+    <div class="alert info">Será criado o contrato com a proposta <b>${propLabel(p)}</b>, contratante, obra, valor e ${p.disciplinas.length?`as disciplinas (${esc(p.disciplinas.join(", "))})`:"sem disciplinas marcadas"}. Em seguida o contrato abre para você completar a condição de pagamento e a próxima cobrança.</div></div>
+  <footer><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="confirmarAceite('${id}')">Aceitar e criar contrato</button></footer>`);
+}
+function confirmarAceite(id){
+  const p=pById(id), v=parseMoney($("pa_v").value)||p.valor, d=$("pa_d").value||todayISO();
+  if(!p.contratanteId){ toast("A proposta está sem contratante — edite antes de aceitar"); return; }
+  p.status="aceita"; p.dataDecisao=d; p.valorAceito=v;
+  let c=pCont(p);
+  if(!c){
+    c={id:uid(),contratanteId:p.contratanteId,empreendimento:p.obra,proposta:propLabel(p),numContrato:"",data:d,valor:v,
+      disciplinas:p.disciplinas.map(nome=>({id:uid(),nome,valor:0})),condicao:"",prox:{data:"",descricao:"",valor:0},
+      obs:p.servico?"Serviço: "+p.servico:"",encerrado:false,propostaId:p.id};
+    state.contratos.push(c); p.contratoId=c.id;
+  }
+  touch(); closeModal(); selContrato=c.id; fC.st="todos"; setMode("rec"); showTab("contratos");
+  toast(`Proposta ${propLabel(p)} aceita · contrato criado`); openContrato(c.id);
+}
+function recusarProp(id){
+  const p=pById(id);
+  openModal(`<header><h3>Recusar proposta ${propLabel(p)}</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><div class="fgrid"><div class="field"><label>Data</label><input id="pr_d" type="date" value="${todayISO()}"></div></div>
+    <div class="field"><label>Motivo <span class="sub">opcional</span></label><input id="pr_m" placeholder="ex.: preço, prazo, cliente desistiu da obra"></div></div>
+  <footer><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn danger" onclick="confirmarRecusa('${id}')">Marcar como recusada</button></footer>`);
+}
+function confirmarRecusa(id){ const p=pById(id), m=$("pr_m").value.trim(); p.status="recusada"; p.dataDecisao=$("pr_d").value||todayISO(); if(m) p.obs=(p.obs?p.obs+" · ":"")+"Recusa: "+m; touch(); closeModal(); render(); toast(`Proposta ${propLabel(p)} marcada como recusada`); }
+/* ---- importar propostas convertidas da planilha ---- */
+async function importarPropostas(o){
+  const lote=o.origem||"planilha", velhas=state.propostas.filter(p=>p.lote===lote);
+  if(velhas.length&&!confirm(`Este arquivo já foi importado (${velhas.length} propostas). Substituir essas propostas pelas do arquivo? As aceitas no app voltam ao estado da planilha e são vinculadas de novo aos contratos.`)) return;
+  await fsBackupNow("antes-de-importar-propostas");
+  state.propostas=state.propostas.filter(p=>p.lote!==lote);
+  const criados=[], achaK=nome=>{ const n=norm(nome); if(!n) return null;
+    return state.contratantes.find(k=>norm(k.nome)===n)||state.contratantes.find(k=>norm(k.nome).split(/\s+/)[0]===n)||state.contratantes.find(k=>norm(k.nome).startsWith(n+" ")); };
+  const novas=(o.propostas||[]).map(x=>{
+    let k=achaK(x.contratante);
+    if(!k&&x.contratante){ k={id:uid(),nome:x.contratante,tipo:"",documento:"",contato:"",obs:""}; state.contratantes.push(k); criados.push(k.nome); }
+    const emp=state.contas.find(c=>norm(c)===norm(x.empresa))||x.empresa||"Polis"; if(!state.contas.includes(emp)) state.contas.push(emp);
+    return {id:uid(),ano:+x.ano,numero:+x.numero,data:x.data||"",contratanteId:k?k.id:"",obra:x.obra||"",servico:x.servico||"",disciplinas:x.disciplinas||[],
+      empresa:emp,valor:+x.valor||0,status:x.status||"enviada",dataDecisao:"",valorAceito:0,contratoId:"",obs:x.obs||"",lote};
+  });
+  state.propostas.push(...novas);
+  const cont=new Map(); novas.forEach(p=>{ const key=p.ano+"/"+p.numero; cont.set(key,(cont.get(key)||[]).concat(p)); });
+  const vinc=[], ambig=[];
+  state.contratos.forEach(c=>{
+    const m=String(c.proposta||"").match(/(\d+)\s*(?:\/\s*(\d{4}))?/); if(!m) return;
+    const ano=+(m[2]||(c.data||anoNow()).slice(0,4)), ps=(cont.get(ano+"/"+(+m[1]))||[]);
+    if(!ps.length) return;
+    const p=ps.length===1?ps[0]:ps.find(x=>x.contratanteId===c.contratanteId); if(!p){ ambig.push(c); return; }
+    const w=id=>norm((kById(id)||{}).nome).split(/\s+/)[0]||"";
+    if(p.contratanteId&&p.contratanteId!==c.contratanteId&&w(p.contratanteId)!==w(c.contratanteId)){ ambig.push(c); return; }  /* contratantes diferentes: não vincula */
+    p.status="aceita"; p.contratoId=c.id; p.valorAceito=c.valor; p.dataDecisao=c.data||""; p.contratanteId=c.contratanteId;
+    c.propostaId=p.id; c.proposta=propLabel(p); vinc.push([p,c]);
+  });
+  touch(); setMode("rec"); showTab("propostas"); fPr={ano:String(novas[0]?novas[0].ano:anoNow()),st:"todas",kid:"",q:""}; renderPropostas();
+  const rep=new Map(); novas.forEach(p=>{ const key=propLabel(p); rep.set(key,(rep.get(key)||0)+1); }); const dup=[...rep].filter(([,n])=>n>1).map(([k])=>k);
+  openModal(`<header><h3>Propostas importadas</h3><button class="xbtn" onclick="closeModal()">×</button></header>
+  <div class="body"><p style="margin-top:0"><b>${novas.length}</b> propostas, somando <b>${brl(sum(novas,p=>p.valor))}</b>.</p>
+    ${vinc.length?`<div class="alert ok"><b>${vinc.length}</b> já tinham contrato no app e foram marcadas como aceitas e vinculadas (o nº da proposta no contrato passou a ter o ano):<ul style="margin:6px 0 0;padding-left:18px">${vinc.map(([p,c])=>`<li>${propLabel(p)} → ${esc(cNome(c))}</li>`).join("")}</ul></div>`:""}
+    <div class="alert info">As demais entraram como <b>Enviadas</b> (a planilha não tem a situação). Atualize as que já foram aceitas ou recusadas — para as aceitas, use "Aceitar", que cria o contrato.</div>
+    ${criados.length?`<div class="alert warn">${criados.length} contratante(s) não existiam e foram cadastrados: ${criados.map(esc).join(", ")}. Se algum for o mesmo que já existe com outro nome, ajuste em Contratantes.</div>`:""}
+    ${dup.length?`<div class="alert warn">Número repetido na planilha: ${dup.join(", ")}. Corrija o número de uma delas pelo "Editar".</div>`:""}
+    ${ambig.length?`<div class="alert warn">Não foi possível vincular automaticamente: ${ambig.map(c=>esc(cNome(c))+" (proposta "+esc(c.proposta)+")").join(", ")}.</div>`:""}</div>
+  <footer><button class="btn primary" onclick="closeModal()">Ok</button></footer>`);
+}
+
 /* ================= barra de ferramentas ================= */
 function download(name,content,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),500); }
 const stamp=()=>todayISO();
 $("btnPrint").addEventListener("click",()=>window.print());
 $("btnExport").addEventListener("click",()=>{ download(`controle-pagamentos_backup_${stamp()}.json`,JSON.stringify(state,null,1),"application/json"); toast("Backup exportado"); });
 function exportNotasCsv(){
-  const rows=[["NF","Emissão","Contratante","Tipo","Obra","Nº proposta","Nº contrato","Descrição","Valor","Situação","Data pagamento"]];
+  const rows=[["NF","Emissão","Contratante","Tipo","Obra","Nº proposta","Nº contrato","Descrição","Empresa","Valor","Retenção","Líquido","Situação","Data pagamento"]];
   state.notas.slice().sort((a,b)=>a.data.localeCompare(b.data)).forEach(n=>{ const c=cById(n.contratoId)||{};
-    rows.push([n.numero,fdate(n.data),cliNome(c),cliTipo(c),c.empreendimento,c.proposta,c.numContrato,n.descricao,nf2(n.valor),{emitida:"Aguardando",paga:"Paga",cancelada:"Cancelada"}[n.status],n.status==="paga"?fdate(n.dataPagamento):""]); });
+    rows.push([n.numero,fdate(n.data),cliNome(c),cliTipo(c),c.empreendimento,c.proposta,c.numContrato,n.descricao,n.conta,nf2(n.valor),nf2(n.retencao),nf2(liqNota(n)),{emitida:"Aguardando",paga:"Paga",cancelada:"Cancelada"}[n.status],n.status==="paga"?fdate(n.dataPagamento):""]); });
   downloadCsv(`notas-fiscais_${stamp()}.csv`,rows);
 }
 $("btnImport").addEventListener("click",()=>$("fileInput").click());
@@ -2288,9 +2565,11 @@ $("fileInput").addEventListener("change",e=>{
     else { const m=txt.match(/window\.__BAKED__=("(?:[^"\\]|\\.)*");/); if(!m) throw 0; o=JSON.parse(JSON.parse(m[1])); }
     if(o&&o.tipo==="polis-despesas"){ await importarDespesas(o); return; }
     if(o&&o.tipo==="polis-entradas"){ await importarEntradas(o); return; }
+    if(o&&o.tipo==="polis-propostas"){ await importarPropostas(o); return; }
     if(!Array.isArray(o.contratos)) throw 0;
     if(!o.despesas) o.despesas=state.despesas;
-    if(!o.entradas){ o.entradas=state.entradas; o.contas=state.contas; }   /* arquivos antigos não têm despesas: mantém as atuais */
+    if(!o.entradas){ o.entradas=state.entradas; o.contas=state.contas; }
+    if(!o.propostas){ o.propostas=state.propostas; o.retPadrao=state.retPadrao; o.impEst=state.impEst; }   /* arquivos antigos não têm despesas: mantém as atuais */
     if(temDados(state) && !confirm("Importar substitui os dados de recebimentos atuais (eles vão para a pasta de backups). Continuar?")) return;
     await fsBackupNow("antes-de-importar");
     const fid=state.fileId; o=migrate(o); o.fileId=fid; state=o;
@@ -2317,6 +2596,7 @@ async function aplicarAtualizacao(){
 }
 
 /* ================= início ================= */
+if(syncRetencoes()) touch();
 renderTabs(); document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+curTab));
 render();
 fsInit();
